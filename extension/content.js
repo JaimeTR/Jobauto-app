@@ -780,20 +780,65 @@ function scrapeSearchResults(platform) {
 
   // ── Google Maps (Business mode) ──
   else if (host.includes('google.com/maps') || host.includes('google.com.pe/maps')) {
-    document.querySelectorAll('[role="feed"] > div, [data-result-id], .Nv2PK, .hfpxzc').forEach(card => {
-      const title = cleanText(card.querySelector('.qBF1Pd, .fontHeadlineSmall, [class*="name"], h3'));
-      const info = cleanText(card.querySelector('.W4Efsd, [class*="info"], .fontBodyMedium'));
-      const link = card.querySelector('a[href*="/maps/place/"]')?.getAttribute('href') || card.querySelector('a')?.getAttribute('href') || '';
-      const fullUrl = link.startsWith('http') ? link : (link.startsWith('/') ? 'https://www.google.com' + link : '');
-      const scoreEl = card.querySelector('.MW4etd, [class*="rating"]');
-      const score = scoreEl ? scoreEl.textContent.replace(/[^0-9.]/g, '').trim() : '';
-      const reviewsEl = card.querySelector('.UY7F9, [class*="review"]');
+    // Multiple strategies to find result cards
+    const cards = document.querySelectorAll([
+      '[role="feed"] > div > div > a',           // list view links
+      '[role="feed"] > div[data-result-id]',      // result cards
+      'a[href*="/maps/place/"]',                  // place links
+      '.Nv2PK', '.hfpxzc',                        // dynamic classes fallback
+      '[jsaction*="mouseover"]'                   // interactive result cards
+    ].join(','));
+
+    const seen = new Set();
+    cards.forEach(card => {
+      // Business name
+      const title = cleanText(card.querySelector(
+        '.qBF1Pd, .fontHeadlineSmall, [class*="name"], [class*="title"], h3, [aria-label]'
+      ));
+      if (!title || title.length < 2 || seen.has(title)) return;
+      seen.add(title);
+
+      // Address / info
+      const infoLines = [];
+      card.querySelectorAll('.W4Efsd > span > span, [class*="address"], [class*="info"], .fontBodyMedium > div').forEach(el => {
+        const t = el.textContent?.trim();
+        if (t && t.length > 2) infoLines.push(t);
+      });
+      const info = infoLines.join(' | ');
+
+      // URL
+      const placeLink = card.closest('a[href*="/maps/place/"]') || card.querySelector('a[href*="/maps/place/"]');
+      const link = placeLink?.getAttribute('href') || card.getAttribute('href') || '';
+      const fullUrl = link.startsWith('http') ? link : (link.startsWith('/') ? 'https://www.google.com' + link : window.location.href);
+
+      // Rating
+      const scoreEl = card.querySelector('.MW4etd, [class*="rating"], [aria-label*="stars" i], [aria-label*="estrellas" i]');
+      const score = scoreEl ? (scoreEl.textContent || scoreEl.getAttribute('aria-label') || '').replace(/[^0-9.]/g, '').trim() : '';
+
+      // Reviews count
+      const reviewsEl = card.querySelector('.UY7F9, [class*="review"], [class*="opinion"]');
       const reviews = reviewsEl ? reviewsEl.textContent.replace(/[^0-9]/g, '').trim() : '';
-      let website = '';
-      let hasWebsite = false;
-      const siteBtn = card.querySelector('a[data-value="Website"], a[aria-label*="sitio web" i], a[aria-label*="website" i]');
-      if (siteBtn) { website = siteBtn.getAttribute('href') || ''; hasWebsite = true; }
-      if (title) listings.push({ title, company: '', snippet: info || '', budget: '', url: fullUrl, description: info || '' });
+
+      // Phone
+      let phone = '';
+      const phoneEl = card.querySelector('[data-tooltip*="Copiar"], [data-phone-number], [class*="phone"]');
+      if (phoneEl) phone = phoneEl.textContent.replace(/[^0-9+\-() ]/g, '').trim();
+
+      // Description = info + metadata
+      let description = info || '';
+      if (score) description += ` | Rating: ${score}`;
+      if (reviews) description += ` (${reviews} reseñas)`;
+      if (phone) description += ` | Tel: ${phone}`;
+
+      listings.push({
+        title,
+        company: '',
+        snippet: description,
+        budget: '',
+        url: fullUrl,
+        description,
+        _mapsData: { phone, rating: score, reviews }
+      });
     });
   }
 
