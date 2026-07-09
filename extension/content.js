@@ -640,21 +640,61 @@ function scrapeSearchResults(platform) {
 
 // ─── Autopilot: Simple profile matching ────────────────────────────────────────
 function matchListingToProfile(listing, profileKeywords) {
-  const text = (listing.title + ' ' + listing.snippet + ' ' + listing.description).toLowerCase();
+  const text = (listing.title + ' ' + listing.snippet + ' ' + (listing.description || '')).toLowerCase();
   let score = 0;
   let matched = [];
 
   for (const kw of profileKeywords) {
     if (text.includes(kw.toLowerCase())) {
-      score += 10;
+      score += 8;
       matched.push(kw);
     }
   }
 
-  // Bonus for budget presence (freelance)
-  if (listing.budget && listing.budget.length > 0) score += 5;
+  if (listing.budget && listing.budget.length > 0 && listing.budget.match(/\d/)) score += 5;
+  if (listing.snippet && listing.snippet.length > 40) score += 3;
+  if (listing.company && listing.company.length > 1) score += 2;
 
   return { score, matched, total: Math.min(score, 100) };
+}
+
+// ─── Autopilot: Find next page button ──────────────────────────────────────────
+function findNextPageButton() {
+  const host = window.location.hostname;
+  const selectors = [
+    '[aria-label="Next"]', '[aria-label="Siguiente"]',
+    '.pagination-next:not(.disabled)', '.next:not(.disabled)',
+    'a[rel="next"]', 'button[rel="next"]',
+    '.pagination a:not(.active):not(.disabled)', '.page-link.next',
+    '[data-testid="pagination-next"]', '[data-qa="pagination-next"]',
+    'nav a[href*="page="]', '.pagination li:last-child a',
+    'a.next_page', '.next_page a', '#next', '.next-button',
+    'button[aria-label*="next" i]', 'a[aria-label*="next" i]',
+  ];
+
+  if (host.includes('upwork.com')) {
+    return document.querySelector('[data-test="pagination-next"], .up-pagination-item:last-child button:not(.up-pagination-item-active)');
+  }
+  if (host.includes('linkedin.com')) {
+    return document.querySelector('.jobs-search-pagination__button[aria-label*="Siguiente"], .jobs-search-pagination__button[aria-label*="Next"], button[aria-label*="next" i], button[aria-label*="siguiente" i]');
+  }
+  if (host.includes('freelancer.com')) {
+    return document.querySelector('.pagination .next:not(.disabled), .pagination li:last-child a:not(.disabled)');
+  }
+  if (host.includes('indeed.com')) {
+    return document.querySelector('a[data-testid="pagination-page-next"], nav a[aria-label="Next"]');
+  }
+  if (host.includes('computrabajo.com')) {
+    return document.querySelector('.pag_numeros a:last-child, .pagination .next, a[rel="next"]');
+  }
+
+  for (const sel of selectors) {
+    const el = document.querySelector(sel);
+    if (el && !el.classList.contains('disabled') && !el.hasAttribute('aria-disabled')) {
+      return el;
+    }
+  }
+  return null;
 }
 
 // ─── Autopilot: Main Runner ────────────────────────────────────────────────────
@@ -672,7 +712,7 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
     position: fixed; top: 20px; right: 20px; z-index: 1000000;
     background: rgba(10, 15, 30, 0.96); color: #f1f5f9;
     border: 1px solid rgba(99, 102, 241, 0.5); border-radius: 14px;
-    padding: 18px; width: 300px; max-height: 80vh; overflow-y: auto;
+    padding: 18px; width: 310px; max-height: 80vh; overflow-y: auto;
     box-shadow: 0 12px 30px rgba(0,0,0,0.6);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 13px; line-height: 1.5;
@@ -682,7 +722,8 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
       <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#a5b4fc; animation: hud-pulse 1.5s infinite;"></span>
       Autopiloto JobAuto
     </div>
-    <div style="font-size:12px; color:#94a3b8; margin-bottom:6px;" id="hud-status">Iniciando escaneo...</div>
+    <div style="font-size:12px; color:#94a3b8; margin-bottom:2px;" id="hud-status">Iniciando escaneo...</div>
+    <div style="font-size:11px; color:#64748b; margin-bottom:2px;" id="hud-page">Pagina: 1</div>
     <div style="font-size:11px; color:#64748b; margin-bottom:6px;" id="hud-progress">Progreso: -</div>
     <div id="hud-results" style="display:none; margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px; max-height:300px; overflow-y:auto;"></div>
   `;
@@ -690,29 +731,31 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
 
   let savedCount = 0;
   let skippedCount = 0;
+  let currentPage = 1;
+  const maxPages = ap.maxPages || 5;
 
   const updateStatus = (statusText, updates = {}) => {
     const el = document.getElementById('hud-status');
     if (el) el.textContent = statusText;
-    chrome.storage.local.set({ autopilot: { ...ap, status: statusText, ...updates } });
+    const pageEl = document.getElementById('hud-page');
+    if (pageEl) pageEl.textContent = `Pagina: ${currentPage}/${maxPages} | Guardados: ${savedCount}`;
+    chrome.storage.local.set({ autopilot: { ...ap, status: statusText, savedCount, skippedCount, ...updates } });
   };
 
-  async function run() {
-    updateStatus('Buscando ofertas en la pagina...');
-
-    await new Promise(r => setTimeout(r, 2500));
+  async function scrapeAndSave() {
+    await new Promise(r => setTimeout(r, 2000));
 
     const listings = scrapeSearchResults(ap.platform);
 
-    if (listings.length === 0) {
-      updateStatus('No se encontraron ofertas. Deteniendo.', { active: false });
+    if (listings.length === 0 && currentPage === 1) {
+      updateStatus('No se encontraron ofertas.', { active: false });
       setTimeout(() => hud.remove(), 5000);
       return;
     }
 
-    updateStatus(`${listings.length} ofertas encontradas.`, { total: listings.length });
+    updateStatus(`${listings.length} ofertas en pagina ${currentPage}.`, { total: (ap.total || 0) + listings.length });
 
-    // Fetch profile keywords from server
+    // Build profile keywords
     let profileKeywords = [];
     try {
       const profileEndpoint = mode === 'job'
@@ -724,51 +767,72 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
       if (res.ok) {
         const profile = await res.json();
         const profileText = (profile.cvText || profile.freelanceOverview || profile.experienceSummary || '').toLowerCase();
+        const skills = (profile.skills || []).map(s => s.toLowerCase());
         const words = profileText.split(/[\s,.;:()\[\]{}<>\/\\|@#$%^&*+=!?`~"'_-]+/);
-        const stopWords = new Set(['de', 'la', 'el', 'los', 'las', 'un', 'una', 'con', 'del', 'para', 'por', 'que', 'en', 'y', 'a', 'o', 'es', 'se', 'su', 'al', 'lo', 'como', 'mas', 'muy', 'the', 'and', 'for', 'with', 'from', 'this', 'that', 'have', 'has', 'are', 'was', 'not', 'but', 'you', 'all', 'can', 'had', 'her', 'his', 'been', 'will', 'would', 'about', 'each', 'which', 'their', 'when', 'what']);
-        profileKeywords = [...new Set(words.filter(w => w.length > 3 && !stopWords.has(w)).slice(0, 20))];
+        const stopWords = new Set(['de','la','el','los','las','un','una','con','del','para','por','que','en','y','a','o','es','se','su','al','lo','como','mas','muy','pero','sin','the','and','for','with','from','this','that','have','has','are','was','not','but','you','all','can','had','her','his','been','will','would','about','each','which','their','when','what','los','las','una','como','para','porque']);
+        profileKeywords = [...new Set([...skills, ...words.filter(w => w.length > 3 && !stopWords.has(w))])].slice(0, 25);
       }
     } catch (e) {
-      console.warn('Could not fetch profile, using basic matching:', e);
+      console.warn('Could not fetch profile:', e);
     }
 
-    // Get keywords from autopilot settings too
+    // Add autopilot keywords (bilingual)
     if (ap.keywords) {
       const extraKeywords = ap.keywords.toLowerCase().split(/[\s,]+/).filter(w => w.length > 2);
-      profileKeywords = [...new Set([...profileKeywords, ...extraKeywords])].slice(0, 25);
+      profileKeywords = [...new Set([...profileKeywords, ...extraKeywords])].slice(0, 30);
     }
 
-    updateStatus(`Evaluando ${listings.length} ofertas con tu perfil...`);
+    // Also add English equivalents of common Spanish keywords
+    const bilingualMap = {
+      'desarrollador': ['developer', 'engineer'],
+      'diseno': ['design', 'designer'],
+      'datos': ['data'],
+      'analista': ['analyst'],
+      'gerente': ['manager'],
+      'proyecto': ['project'],
+      'soporte': ['support'],
+      'ventas': ['sales'],
+      'marketing': ['marketing'],
+      'contenido': ['content'],
+      'frontend': ['front-end', 'front end', 'frontend'],
+      'backend': ['back-end', 'back end', 'backend'],
+      'fullstack': ['full-stack', 'full stack'],
+      'react': ['reactjs', 'react.js'],
+      'node': ['nodejs', 'node.js'],
+      'python': ['django', 'flask'],
+    };
+    const expandedKeywords = new Set(profileKeywords);
+    for (const kw of profileKeywords) {
+      if (bilingualMap[kw]) {
+        bilingualMap[kw].forEach(w => expandedKeywords.add(w));
+      }
+    }
+    profileKeywords = [...expandedKeywords].slice(0, 40);
+
+    if (profileKeywords.length < 2) {
+      profileKeywords = ap.keywords ? ap.keywords.toLowerCase().split(/[\s,]+/).filter(w => w.length > 2) : ['developer', 'javascript', 'react', 'node', 'python', 'design'];
+    }
+
+    updateStatus(`Evaluando con ${profileKeywords.length} keywords...`);
 
     const resultsEl = document.getElementById('hud-results');
     resultsEl.style.display = 'block';
 
-    const threshold = ap.minScore || 20;
+    const threshold = ap.minScore || 10;
     let i = 0;
 
     for (const listing of listings) {
       i++;
       const progressEl = document.getElementById('hud-progress');
-      if (progressEl) progressEl.textContent = `Procesando: ${i} de ${listings.length} | Guardados: ${savedCount}`;
+      if (progressEl) progressEl.textContent = `Procesando: ${i}/${listings.length} | Guardados: ${savedCount}`;
 
       const match = matchListingToProfile(listing, profileKeywords);
 
       if (match.total >= threshold) {
-        // Save to dashboard
         try {
           const endpoint = mode === 'job'
             ? `${apiUrl}/api/applications`
             : `${apiUrl}/api/freelance/proposals`;
-
-          const payload = {
-            title: listing.title,
-            company: listing.company || 'Desconocido',
-            url: listing.url || window.location.href,
-            description: listing.snippet || listing.description || '',
-            budget: listing.budget || '',
-            status: 'Saved',
-            platform: ap.platform.charAt(0).toUpperCase() + ap.platform.slice(1)
-          };
 
           const res = await fetch(endpoint, {
             method: 'POST',
@@ -776,18 +840,28 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+              title: listing.title,
+              company: listing.company || 'Desconocido',
+              url: listing.url || window.location.href,
+              description: listing.snippet || '',
+              budget: listing.budget || '',
+              status: 'Saved',
+              platform: ap.platform.charAt(0).toUpperCase() + ap.platform.slice(1),
+              compatibilityScore: match.total,
+              compatibilityRationale: `Keywords: ${match.matched.join(', ')}`
+            })
           });
 
           if (res.ok) {
             savedCount++;
             const itemEl = document.createElement('div');
             itemEl.style.cssText = 'padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:11px; margin-bottom:2px;';
-            const url = listing.url || '#';
+            const lnk = listing.url || '#';
             itemEl.innerHTML = `
-              <div style="color:#10b981; font-weight:600; margin-bottom:2px;">+ ${listing.title.substring(0, 50)}</div>
-              <div style="color:#64748b;">${listing.company} - Score: ${match.total}%</div>
-              ${url !== '#' ? `<a href="${url}" target="_blank" style="color:#6366f1; font-size:10px;">Ver oferta →</a>` : ''}
+              <div style="color:#10b981; font-weight:600;">+ ${listing.title.substring(0, 55)}</div>
+              <div style="color:#64748b;">${listing.company || ''} - Score: ${match.total}%</div>
+              ${lnk !== '#' ? `<a href="${lnk}" target="_blank" style="color:#6366f1; font-size:10px;">Ver oferta →</a>` : ''}
             `;
             resultsEl.appendChild(itemEl);
           } else {
@@ -800,39 +874,58 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
         skippedCount++;
       }
 
-      // Small delay between saves to avoid rate limiting
-      if (i < listings.length) {
-        await new Promise(r => setTimeout(r, 400));
-      }
+      if (i < listings.length) await new Promise(r => setTimeout(r, 300));
     }
 
-    // Build summary URL
-    let summaryUrl = apiUrl;
-    try {
-      const searchUrl = encodeURIComponent(ap.searchUrl || window.location.href);
-      summaryUrl = `${apiUrl}?autopilot=done&saved=${savedCount}&skipped=${skippedCount}&platform=${ap.platform}`;
-    } catch (e) {}
+    updateStatus(`Pagina ${currentPage} lista. ${savedCount} guardadas.`);
+  }
 
-    updateStatus(`Completado: ${savedCount} guardadas, ${skippedCount} omitidas.`, { active: false, savedCount, skippedCount });
+  async function runAllPages() {
+    while (currentPage <= maxPages) {
+      // Check if autopilot was stopped
+      const stored = await new Promise(resolve => chrome.storage.local.get(['autopilot'], resolve));
+      if (!stored.autopilot?.active) {
+        updateStatus('Detenido por el usuario.', { active: false });
+        return;
+      }
 
+      await scrapeAndSave();
+
+      if (currentPage >= maxPages) break;
+
+      const nextBtn = findNextPageButton();
+      if (!nextBtn) {
+        updateStatus(`Sin mas paginas. Completado.`);
+        break;
+      }
+
+      currentPage++;
+      updateStatus(`Navegando a pagina ${currentPage}...`);
+      nextBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      await new Promise(r => setTimeout(r, 1500));
+      nextBtn.click();
+      await new Promise(r => setTimeout(r, 3000));
+    }
+
+    const resultsEl = document.getElementById('hud-results');
     const footerEl = document.createElement('div');
     footerEl.style.cssText = 'margin-top:10px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1); text-align:center;';
     footerEl.innerHTML = `
-      <a href="${summaryUrl}" style="display:inline-block; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:#fff; padding:8px 16px; border-radius:8px; text-decoration:none; font-weight:600; font-size:12px;">Ir al Dashboard</a>
+      <div style="color:#94a3b8; font-size:11px; margin-bottom:8px;">${savedCount} guardadas · ${skippedCount} omitidas · ${currentPage} paginas</div>
+      <a href="${apiUrl}" style="display:inline-block; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:#fff; padding:8px 16px; border-radius:8px; text-decoration:none; font-weight:600; font-size:12px;">Ir al Dashboard</a>
     `;
     resultsEl.appendChild(footerEl);
 
-    // Auto-remove HUD after 30 seconds (user can read results)
-    setTimeout(() => {
-      if (hud.parentNode) hud.remove();
-    }, 30000);
+    updateStatus(`Completado: ${savedCount} guardadas.`, { active: false, savedCount, skippedCount, totalPages: currentPage });
 
+    setTimeout(() => { if (hud.parentNode) hud.remove(); }, 60000);
     chrome.storage.local.set({ autopilot: { ...ap, active: false, savedCount, skippedCount } });
   }
 
-  run().catch((err) => {
+  runAllPages().catch(err => {
     updateStatus(`Error: ${err.message}`, { active: false });
-    setTimeout(() => hud.remove(), 8000);
+    setTimeout(() => hud.remove(), 10000);
   });
 }
 

@@ -373,26 +373,27 @@ function checkAutopilotState() {
 function startAutopilot() {
   const keywords = document.getElementById('autopilot-keywords').value.trim();
   const platform = document.getElementById('autopilot-platform').value;
-  const threshold = parseInt(document.getElementById('autopilot-threshold')?.value || '20', 10);
+  const threshold = parseInt(document.getElementById('autopilot-threshold')?.value || '10', 10);
 
   if (!keywords) {
-    showMainToast('Describe que buscas (ej: React, Node.js, Diseño)', 'error');
+    showMainToast('Describe que buscas (ej: React, Node.js, Diseno)', 'error');
     return;
   }
 
   chrome.storage.local.get(['mode'], (s) => {
     const mode = s.mode || 'job';
 
+    // Search URLs with sorting (newest first where possible)
     const searchUrls = {
-      upwork: `https://www.upwork.com/nx/search/jobs/?q=${encodeURIComponent(keywords)}`,
-      freelancer: `https://www.freelancer.com/jobs/?q=${encodeURIComponent(keywords)}`,
-      workana: `https://www.workana.com/jobs?query=${encodeURIComponent(keywords)}`,
-      fiverr: `https://www.fiverr.com/search/gigs?query=${encodeURIComponent(keywords)}`,
-      linkedin: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(keywords)}`,
-      indeed: `https://www.indeed.com/jobs?q=${encodeURIComponent(keywords)}`,
-      computrabajo: `https://www.computrabajo.com/trabajo-de-${encodeURIComponent(keywords)}`,
-      getonbrd: `https://www.getonbrd.com/trabajos?search=${encodeURIComponent(keywords)}`,
-      bumeran: `https://www.bumeran.com.pe/empleos-busqueda-${encodeURIComponent(keywords)}.html`
+      upwork: `https://www.upwork.com/nx/search/jobs/?q=${encodeURIComponent(keywords)}&sort=recency`,
+      freelancer: `https://www.freelancer.com/jobs/${encodeURIComponent(keywords)}/?sort=submitdate`,
+      workana: `https://www.workana.com/jobs?query=${encodeURIComponent(keywords)}&sort=recent`,
+      fiverr: `https://www.fiverr.com/search/gigs?query=${encodeURIComponent(keywords)}&sort=recency`,
+      linkedin: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(keywords)}&sortBy=DD`,
+      indeed: `https://www.indeed.com/jobs?q=${encodeURIComponent(keywords)}&sort=date`,
+      computrabajo: `https://www.computrabajo.com/trabajo-de-${encodeURIComponent(keywords)}?ord=fecha`,
+      getonbrd: `https://www.getonbrd.com/trabajos?search=${encodeURIComponent(keywords)}&sort=date`,
+      bumeran: `https://www.bumeran.com.pe/empleos-busqueda-${encodeURIComponent(keywords)}.html?orden=2`
     };
 
     const searchUrl = searchUrls[platform];
@@ -407,6 +408,7 @@ function startAutopilot() {
       platform,
       mode,
       minScore: threshold,
+      maxPages: 3,
       searchUrl,
       urls: [],
       currentIdx: -1,
@@ -423,7 +425,7 @@ function startAutopilot() {
       autopilotPlatform: platform
     }, () => {
       checkAutopilotState();
-      showMainToast(`Buscando "${keywords}" en modo ${mode}...`);
+      showMainToast(`Buscando "${keywords}" en ${platform}...`);
       chrome.tabs.create({ url: searchUrl });
     });
   });
