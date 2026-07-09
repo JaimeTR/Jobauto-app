@@ -310,7 +310,27 @@ export default function App() {
   // Global modes and tabs
   const [mode, setMode] = useState('freelance'); // freelance, business, job
   const [activeTab, setActiveTab] = useState('board');
-  const [boardMode, setBoardMode] = useState('freelance'); // sub-tab for Kanban: freelance, business, job
+  const [boardMode, setBoardMode] = useState('freelance');
+
+  // URL hash routing
+  useEffect(() => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash && ['board','resources','profile','portfolio','calendar','alerts','settings'].includes(hash)) {
+      setActiveTab(hash);
+    }
+    const onHashChange = () => {
+      const h = window.location.hash.replace('#', '');
+      if (h && ['board','resources','profile','portfolio','calendar','alerts','settings'].includes(h)) setActiveTab(h);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  // Update URL hash when tab changes
+  const navigateTo = (tab) => {
+    setActiveTab(tab);
+    window.location.hash = tab;
+  }; // sub-tab for Kanban: freelance, business, job
   
   // Data State
   const [profile, setProfile] = useState({
@@ -327,6 +347,7 @@ export default function App() {
   const [portfolio, setPortfolio] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [leads, setLeads] = useState([]);
+  const [activeRubro, setActiveRubro] = useState('Todos');
   
   // UI State
   const [toast, setToast] = useState({ message: '', type: 'success', active: false });
@@ -1443,21 +1464,21 @@ export default function App() {
         </div>
 
         <nav className="sidebar-nav">
-          <button className={`nav-item ${activeTab === 'board' ? 'active' : ''}`} onClick={() => setActiveTab('board')}>
+          <button className={`nav-item ${activeTab === 'board' ? 'active' : ''}`} onClick={() => navigateTo('board')}>
             <Briefcase size={18} />
             <span>{mode === 'job' ? 'Tablero Trabajos' : mode === 'business' ? 'Tablero Prospeccion' : 'Tablero Proyectos'}</span>
           </button>
-          <button className={`nav-item ${activeTab === 'resources' ? 'active' : ''}`} onClick={() => setActiveTab('resources')}>
+          <button className={`nav-item ${activeTab === 'resources' ? 'active' : ''}`} onClick={() => navigateTo('resources')}>
             <FolderGit size={18} />
             <span>Recursos</span>
           </button>
-          <button className={`nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
+          <button className={`nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => navigateTo('profile')}>
             <User size={18} />
             <span>Perfil</span>
           </button>
           {mode === 'freelance' && (
             <>
-              <button className={`nav-item ${activeTab === 'portfolio' ? 'active' : ''}`} onClick={() => setActiveTab('portfolio')}>
+              <button className={`nav-item ${activeTab === 'portfolio' ? 'active' : ''}`} onClick={() => navigateTo('portfolio')}>
                 <Briefcase size={18} />
                 <span>Portafolio</span>
               </button>
@@ -1468,16 +1489,16 @@ export default function App() {
             </>
           )}
           {mode === 'business' && (
-            <button className={`nav-item ${activeTab === 'portfolio' ? 'active' : ''}`} onClick={() => setActiveTab('portfolio')}>
+            <button className={`nav-item ${activeTab === 'portfolio' ? 'active' : ''}`} onClick={() => navigateTo('portfolio')}>
               <Briefcase size={18} />
               <span>Portafolio x Rubro</span>
             </button>
           )}
-          <button className={`nav-item ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => setActiveTab('calendar')}>
+          <button className={`nav-item ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => navigateTo('calendar')}>
             <CalendarIcon size={18} />
             <span>Calendario</span>
           </button>
-          <button className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
+          <button className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => navigateTo('settings')}>
             <Settings size={18} />
             <span>Ajustes</span>
           </button>
@@ -1991,7 +2012,6 @@ export default function App() {
             {/* Rubro filters */}
             {(() => {
               const rubros = [...new Set(portfolio.map(p => (p.rubro || 'Sin categoría')).filter(Boolean))];
-              const [activeRubro, setActiveRubro] = useState('Todos');
               const filteredPortfolio = activeRubro === 'Todos' ? portfolio : portfolio.filter(p => (p.rubro || 'Sin categoría') === activeRubro);
               return (
                 <>
@@ -2833,3 +2853,4 @@ export default function App() {
     </div>
   );
 }
+
