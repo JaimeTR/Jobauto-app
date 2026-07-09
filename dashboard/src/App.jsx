@@ -1435,16 +1435,13 @@ export default function App() {
         </div>
 
         <nav className="sidebar-nav">
-          <button className={`nav-item ${activeTab === 'board' ? 'active' : ''}`} onClick={() => { setActiveTab('board'); if (mode === 'business') setActiveTab('leads'); }}>
+          <button className={`nav-item ${activeTab === 'board' || activeTab === 'leads' ? 'active' : ''}`} onClick={() => { 
+            if (mode === 'business') { setActiveTab('leads'); loadLeads(); }
+            else setActiveTab('board');
+          }}>
             <Briefcase size={18} />
-            <span>{mode === 'job' ? 'Tablero Trabajos' : mode === 'business' ? 'Clientes (Leads)' : 'Tablero Proyectos'}</span>
+            <span>{mode === 'job' ? 'Tablero Trabajos' : mode === 'business' ? 'Tablero Empresas' : 'Tablero Proyectos'}</span>
           </button>
-          {mode === 'business' && (
-            <button className={`nav-item ${activeTab === 'leads' ? 'active' : ''}`} onClick={() => { setActiveTab('leads'); loadLeads(); }}>
-              <Target size={18} />
-              <span>Clientes (Leads)</span>
-            </button>
-          )}
           <button 
             className={`nav-item ${activeTab === 'alerts' ? 'active' : ''}`} 
             onClick={() => {
@@ -1502,6 +1499,7 @@ export default function App() {
         <header className="content-header">
           <div className="header-title">
             <h2>{
+              activeTab === 'leads' ? 'Tablero de Prospeccion' :
               activeTab === 'board' ? `Tablero de ${mode === 'job' ? 'Postulaciones' : 'Proyectos'}` :
               activeTab === 'alerts' ? 'Alertas de Proyectos RSS' :
               activeTab === 'profile' ? 'Mi Perfil & Currículum' :
@@ -1509,7 +1507,8 @@ export default function App() {
               activeTab === 'calendar' ? 'Calendario de Eventos' : 'Ajustes del Sistema'
             }</h2>
             <p>
-              {activeTab === 'board' ? 'Organiza, adapta tus propuestas con IA y da seguimiento' : 
+              {activeTab === 'leads' ? 'Gestiona clientes potenciales encontrados en Google Maps' :
+               activeTab === 'board' ? 'Organiza, adapta tus propuestas con IA y da seguimiento' : 
                activeTab === 'alerts' ? 'Proyectos detectados en segundo plano con compatibilidad >50%' :
                'Administra tus datos para potenciar las respuestas de la IA'}
             </p>
@@ -1757,14 +1756,14 @@ export default function App() {
           </section>
         )}
 
-        {/* Section: Leads (Clientes Potenciales) */}
-        {activeTab === 'leads' && (
+        {/* Section: Tablero Empresas (Leads Kanban) */}
+        {activeTab === 'leads' && mode === 'business' && (
           <section className="content-section active">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
               <div>
-                <h3 style={{ margin: 0 }}>Clientes Potenciales</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '4px 0 0 0' }}>
-                  Usa el modo 🏢 Empresa en la extension para buscar negocios en Google Maps
+                <h3 style={{ margin: 0 }}>Tablero de Prospeccion</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '4px 0 0 0', maxWidth: '500px' }}>
+                  Busca negocios en Google Maps con la extension (modo 🏢 Empresa), scrapea sus datos y gestiona el seguimiento aqui. Cada lead pasa por: Nuevo → Contactado → Propuesta → Cerrado.
                 </p>
               </div>
               <span style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600 }}>
