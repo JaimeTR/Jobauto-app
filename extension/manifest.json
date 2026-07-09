@@ -9,7 +9,8 @@
     "tabs"
   ],
   "host_permissions": [
-    "http://localhost:3000/*"
+    "http://localhost:3000/*",
+    "https://*/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -33,6 +34,8 @@
         "*://*.freelancer.com/*",
         "*://*.workana.com/*",
         "*://*.upwork.com/*",
+        "*://*.guru.com/*",
+        "*://*.fiverr.com/*",
         "*://localhost/*",
         "*://127.0.0.1/*"
       ],
