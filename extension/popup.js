@@ -10,43 +10,55 @@ let resendInterval = null;
 document.addEventListener('DOMContentLoaded', async () => {
   bindButtons();
 
-  // Show extension version from manifest
   const manifest = chrome.runtime.getManifest();
   const versionEl = document.getElementById('ext-version');
-  if (versionEl && manifest.version) {
-    versionEl.textContent = 'v' + manifest.version;
-  }
+  if (versionEl && manifest.version) versionEl.textContent = 'v' + manifest.version;
 
-  chrome.storage.local.get(['token', 'email', 'apiUrl', 'mode', 'guideSeen', 'autopilotKeywords', 'autopilotPlatform'], async (s) => {
-    const apiUrl = s.apiUrl || 'http://localhost:3000';
-    document.getElementById('api-url-input').value = apiUrl;
-    checkServerStatus(apiUrl);
+  await loadSession();
 
-    if (s.autopilotKeywords) document.getElementById('autopilot-keywords').value = s.autopilotKeywords;
-    if (s.autopilotPlatform) document.getElementById('autopilot-platform').value = s.autopilotPlatform;
-
-    if (s.token && s.email) {
-      const valid = await validateToken(apiUrl, s.token);
-      if (valid || valid === true) {
-        updateAutopilotUI(s.mode || 'freelance');
-        if (!s.guideSeen) {
-          showView('guide');
-          animateGuideSteps();
-        } else {
-          showView('main');
-          populateMain(s.email, s.mode || 'freelance');
-        }
-      } else {
-        chrome.storage.local.remove(['token', 'email']);
+  // Listen for storage changes (dashboard login sync)
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && (changes.token || changes.email)) {
+      const token = changes.token?.newValue;
+      const email = changes.email?.newValue;
+      if (token && email) {
+        populateMain(email);
+        showView('main');
+      } else if (!token) {
         showView('login');
       }
-    } else {
-      showView('login');
     }
-    
-    checkAutopilotState();
+    if (area === 'local' && changes.mode) {
+      updateAutopilotUI(changes.mode.newValue || 'freelance');
+    }
   });
 });
+
+async function loadSession() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['token', 'email', 'apiUrl', 'mode', 'guideSeen'], async (s) => {
+      const apiUrl = s.apiUrl || 'http://localhost:3000';
+      document.getElementById('api-url-input').value = apiUrl;
+      checkServerStatus(apiUrl);
+
+      if (s.token && s.email) {
+        const valid = await validateToken(apiUrl, s.token);
+        if (valid) {
+          updateAutopilotUI(s.mode || 'freelance');
+          if (!s.guideSeen) { showView('guide'); animateGuideSteps(); }
+          else { showView('main'); populateMain(s.email, s.mode || 'freelance'); }
+        } else {
+          chrome.storage.local.remove(['token', 'email']);
+          showView('login');
+        }
+      } else {
+        showView('login');
+      }
+      checkAutopilotState();
+      resolve();
+    });
+  });
+}
 
 // ─── Views ────────────────────────────────────────────────────────────────────
 function showView(name) {
