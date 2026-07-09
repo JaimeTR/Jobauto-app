@@ -706,7 +706,13 @@ export default function App() {
   };
 
   const loadBoardData = async () => {
-    if (mode === 'business') { loadLeads(); return; }
+    if (mode === 'business') {
+      try {
+        const res = await authFetch(`${API_BASE}/freelance/proposals`);
+        if (res.ok) setApplications(await res.json());
+      } catch (e) {}
+      return;
+    }
     try {
       const endpoint = mode === 'job' ? `${API_BASE}/applications` : `${API_BASE}/freelance/proposals`;
       const res = await authFetch(endpoint);
@@ -1169,6 +1175,8 @@ export default function App() {
   const getFriendlyStatusName = (status) => {
     const jobMap = { Saved: 'Guardadas', Applied: 'Postuladas', Interviewing: 'Entrevistas', Rejected: 'Rechazadas', Offer: 'Ofertas' };
     const freelanceMap = { Saved: 'Guardadas', Applied: 'Enviadas', Interviewing: 'En Conversación', Offer: 'Ganadas', Rejected: 'Perdidas' };
+    const businessMap = { Saved: 'Guardado', Applied: 'Contactando', Interviewing: 'En Espera', Offer: 'Confirmado', Rejected: 'Negado' };
+    if (mode === 'business') return businessMap[status] || status;
     return mode === 'job' ? jobMap[status] || status : freelanceMap[status] || status;
   };
 
@@ -1425,7 +1433,7 @@ export default function App() {
             >🚀 Freelance</button>
             <button 
               className={`mode-btn ${mode === 'business' ? 'active' : ''}`}
-              onClick={() => { setMode('business'); setActiveTab('leads'); }}
+              onClick={() => { setMode('business'); setActiveTab('board'); }}
             >🏢 Empresa</button>
             <button 
               className={`mode-btn ${mode === 'job' ? 'active' : ''}`}
@@ -1435,12 +1443,9 @@ export default function App() {
         </div>
 
         <nav className="sidebar-nav">
-          <button className={`nav-item ${activeTab === 'board' || activeTab === 'leads' ? 'active' : ''}`} onClick={() => { 
-            if (mode === 'business') { setActiveTab('leads'); loadLeads(); }
-            else setActiveTab('board');
-          }}>
+          <button className={`nav-item ${activeTab === 'board' ? 'active' : ''}`} onClick={() => setActiveTab('board')}>
             <Briefcase size={18} />
-            <span>{mode === 'job' ? 'Tablero Trabajos' : mode === 'business' ? 'Tablero Empresas' : 'Tablero Proyectos'}</span>
+            <span>{mode === 'job' ? 'Tablero Trabajos' : mode === 'business' ? 'Tablero Prospeccion' : 'Tablero Proyectos'}</span>
           </button>
           <button 
             className={`nav-item ${activeTab === 'alerts' ? 'active' : ''}`} 
@@ -1499,15 +1504,14 @@ export default function App() {
         <header className="content-header">
           <div className="header-title">
             <h2>{
-              activeTab === 'leads' ? 'Tablero de Prospeccion' :
-              activeTab === 'board' ? `Tablero de ${mode === 'job' ? 'Postulaciones' : 'Proyectos'}` :
+              activeTab === 'board' ? (mode === 'business' ? 'Tablero de Prospeccion' : `Tablero de ${mode === 'job' ? 'Postulaciones' : 'Proyectos'}`) :
               activeTab === 'alerts' ? 'Alertas de Proyectos RSS' :
               activeTab === 'profile' ? 'Mi Perfil & Currículum' :
               activeTab === 'portfolio' ? 'Portafolio de Proyectos' :
               activeTab === 'calendar' ? 'Calendario de Eventos' : 'Ajustes del Sistema'
             }</h2>
             <p>
-              {activeTab === 'leads' ? 'Gestiona clientes potenciales encontrados en Google Maps' :
+              {activeTab === 'board' && mode === 'business' ? 'Gestiona clientes potenciales encontrados en Google Maps' :
                activeTab === 'board' ? 'Organiza, adapta tus propuestas con IA y da seguimiento' : 
                activeTab === 'alerts' ? 'Proyectos detectados en segundo plano con compatibilidad >50%' :
                'Administra tus datos para potenciar las respuestas de la IA'}
@@ -1527,11 +1531,11 @@ export default function App() {
           )}
         </header>
 
-        {/* Section: Board (solo Freelance y Trabajo) */}
-        {activeTab === 'board' && mode !== 'business' && (
+        {/* Section: Board (los 3 modos) */}
+        {activeTab === 'board' && (
           <section className="content-section active">
             
-            {/* Earnings monthly tracker */}
+            {/* Earnings monthly tracker - only for freelance */}
             {mode === 'freelance' && (
               <div className="card" style={{ maxWidth: 'none', padding: '16px 24px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px' }}>
@@ -1752,75 +1756,6 @@ export default function App() {
                   );
                 })
               )}
-            </div>
-          </section>
-        )}
-
-        {/* Section: Tablero Empresas (Leads Kanban) */}
-        {activeTab === 'leads' && mode === 'business' && (
-          <section className="content-section active">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-              <div>
-                <h3 style={{ margin: 0 }}>Tablero de Prospeccion</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '4px 0 0 0', maxWidth: '500px' }}>
-                  Busca negocios en Google Maps con la extension (modo 🏢 Empresa), scrapea sus datos y gestiona el seguimiento aqui. Cada lead pasa por: Nuevo → Contactado → Propuesta → Cerrado.
-                </p>
-              </div>
-              <span style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600 }}>
-                {leads.length} leads
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '8px' }}>
-              {['Nuevo', 'Contactado', 'Propuesta', 'Cerrado'].map(col => {
-                const colLeads = leads.filter(l => l.status === col || (col === 'Propuesta' && l.proposalGenerated));
-                const colors = { Nuevo: '#6366f1', Contactado: '#f59e0b', Propuesta: '#10b981', Cerrado: '#6b7280' };
-                return (
-                  <div key={col} style={{ flex: '0 0 260px', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border-color)', padding: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '8px', borderBottom: `2px solid ${colors[col]}` }}>
-                      <span style={{ fontWeight: 700, fontSize: '14px' }}>{col}</span>
-                      <span style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', color: 'var(--text-muted)' }}>{colLeads.length}</span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {colLeads.map(lead => (
-                        <div key={lead.id} style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '12px', cursor: 'pointer', fontSize: '12px' }}
-                          onClick={async () => {
-                            try {
-                              const res = await authFetch(`${API_BASE}/leads/${lead.id}/generate-proposal`, { method: 'POST' });
-                              const data = await res.json();
-                              if (res.ok) { showToast('Propuesta generada!'); loadLeads(); alert(`Propuesta ${lead.businessName}:\n\n${data.proposal?.proposal}\n\nPrecio: ${data.proposal?.estimatedPrice}`); }
-                            } catch (e) { showToast('Error', 'error'); }
-                          }}>
-                          <div style={{ fontWeight: 600, marginBottom: '3px' }}>{lead.businessName || 'Sin nombre'}</div>
-                          <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginBottom: '3px' }}>
-                            {lead.category && <span style={{ background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', padding: '1px 6px', borderRadius: '4px', fontSize: '10px', marginRight: '4px' }}>{lead.category}</span>}
-                            {lead.address?.substring(0, 35)}
-                          </div>
-                          <div style={{ color: '#6b7280', fontSize: '10px', marginBottom: '3px' }}>
-                            {lead.phone && <span><Phone size={10} style={{display:'inline'}} /> {lead.phone} </span>}
-                            {lead.rating && <span><Star size={10} style={{display:'inline',color:'#f59e0b'}} /> {lead.rating}</span>}
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            {lead.hasWebsite ? <span style={{ color:'#10b981', fontSize:'10px' }}>Tiene web</span> : <span style={{ color:'#ef4444', fontSize:'10px' }}>Sin web</span>}
-                            {lead.website && <a href={lead.website} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ color:'#6366f1', fontSize:'10px', marginLeft:'auto' }}><ExternalLink size={10} /></a>}
-                          </div>
-                          <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
-                            <button style={{ flex:1, fontSize:'10px', padding:'4px 8px', border:'1px solid var(--border-color)', borderRadius:'5px', background:'rgba(16,185,129,0.1)', color:'#34d399', cursor:'pointer' }}
-                              onClick={async (e) => { e.stopPropagation(); await authFetch(`${API_BASE}/leads/${lead.id}`, {method:'PUT', body:JSON.stringify({ status:'Contactado' })}); loadLeads(); }}>
-                              Contactar
-                            </button>
-                            <button style={{ flex:1, fontSize:'10px', padding:'4px 8px', border:'1px solid var(--border-color)', borderRadius:'5px', background:'rgba(239,68,68,0.1)', color:'#f87171', cursor:'pointer' }}
-                              onClick={async (e) => { e.stopPropagation(); await authFetch(`${API_BASE}/leads/${lead.id}`, {method:'DELETE'}); loadLeads(); }}>
-                              Eliminar
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                      {colLeads.length === 0 && <div style={{ textAlign:'center', color:'var(--text-muted)', fontSize:'12px', padding:'20px' }}>Vacio</div>}
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           </section>
         )}

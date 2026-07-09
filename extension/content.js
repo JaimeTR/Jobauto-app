@@ -914,7 +914,7 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
     const endpoint = mode === 'job'
       ? `${apiUrl}/api/applications`
       : mode === 'business'
-        ? `${apiUrl}/api/leads`
+        ? `${apiUrl}/api/freelance/proposals`
         : `${apiUrl}/api/freelance/proposals`;
 
     // Quick keyword filter based on threshold
@@ -951,16 +951,15 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
         let payload;
         if (ap.mode === 'business') {
           payload = {
-            businessName: listing.title,
-            category: ap.keywords || '',
-            address: listing.snippet || '',
-            website: listing.url || '',
-            hasWebsite: false,
-            phone: '',
-            rating: listing.company || '',
-            mapsUrl: listing.url || window.location.href,
-            status: 'Nuevo',
-            source: 'Google Maps'
+            title: listing.title,
+            company: listing.company || 'Negocio local',
+            url: listing.url || window.location.href,
+            description: listing.snippet || listing.description || '',
+            budget: '',
+            status: 'Saved',
+            platform: 'Google Maps',
+            contactEmail: '',
+            source: 'google_maps'
           };
         } else {
           const desc = [listing.snippet, listing.description].filter(Boolean).join(' ') || '';
