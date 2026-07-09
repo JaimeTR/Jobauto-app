@@ -1466,6 +1466,12 @@ export default function App() {
               </button>
             </>
           )}
+          {mode === 'business' && (
+            <button className={`nav-item ${activeTab === 'portfolio' ? 'active' : ''}`} onClick={() => setActiveTab('portfolio')}>
+              <Briefcase size={18} />
+              <span>Portafolio x Rubro</span>
+            </button>
+          )}
           <button className={`nav-item ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => setActiveTab('calendar')}>
             <CalendarIcon size={18} />
             <span>Calendario</span>
@@ -1937,8 +1943,42 @@ export default function App() {
           </section>
         )}
 
-        {/* Section: Portfolio v2 - con rubros */}
+        {/* Section: Portfolio (Freelance - normal) */}
         {activeTab === 'portfolio' && mode === 'freelance' && (
+          <section className="content-section active">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3>Portafolio de Proyectos</h3>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <AiProjectPanel token={token} onProjectCreated={async (data) => {
+                  await authFetch(`${API_BASE}/freelance/portfolio`, { method: 'POST', body: JSON.stringify({ title: data.title || '', description: data.description || '', technologies: Array.isArray(data.technologies) ? data.technologies.join(', ') : data.technologies || '', link: data.link || '', rubro: 'General' }) });
+                  await loadPortfolio(); showToast('Proyecto agregado!', 'success');
+                }} />
+                <button className="btn btn-primary" onClick={() => { setPortfolioForm({ id: '', title: '', description: '', technologies: '', link: '', rubro: 'General' }); setShowPortfolioFormModal(true); }}>
+                  <Plus size={16} /><span>Agregar Proyecto</span>
+                </button>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+              {portfolio.map(project => (
+                <div key={project.id} className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <h4 style={{ fontSize: '15px', margin: 0 }}>{project.title}</h4>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button className="btn btn-small btn-secondary" onClick={() => { setPortfolioForm(project); setShowPortfolioFormModal(true); }}>Editar</button>
+                      <button className="btn btn-small btn-danger btn-icon" onClick={() => handleDeletePortfolioItem(project.id)}><Trash2 size={12} /></button>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>{project.description}</p>
+                  <div style={{ fontSize: '11px', color: 'var(--accent-primary)' }}>{project.technologies}</div>
+                  {project.link && <a href={project.link} target="_blank" rel="noreferrer" style={{ fontSize: '11px' }}>Ver demo <ExternalLink size={10} /></a>}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Section: Portfolio v2 - con rubros (Empresa) */}
+        {activeTab === 'portfolio' && mode === 'business' && (
           <section className="content-section active">
             <div style={{ marginBottom: '16px' }}>
               <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', margin: '0 0 4px 0' }}>Portafolio por Rubro</h3>
