@@ -638,26 +638,6 @@ function scrapeSearchResults(platform) {
   return unique;
 }
 
-// ─── Autopilot: Simple profile matching ────────────────────────────────────────
-function matchListingToProfile(listing, profileKeywords) {
-  const text = (listing.title + ' ' + listing.snippet + ' ' + (listing.description || '')).toLowerCase();
-  let score = 0;
-  let matched = [];
-
-  for (const kw of profileKeywords) {
-    if (text.includes(kw.toLowerCase())) {
-      score += 8;
-      matched.push(kw);
-    }
-  }
-
-  if (listing.budget && listing.budget.length > 0 && listing.budget.match(/\d/)) score += 5;
-  if (listing.snippet && listing.snippet.length > 40) score += 3;
-  if (listing.company && listing.company.length > 1) score += 2;
-
-  return { score, matched, total: Math.min(score, 100) };
-}
-
 // ─── Autopilot: Find next page button ──────────────────────────────────────────
 function findNextPageButton() {
   const host = window.location.hostname;
@@ -712,7 +692,7 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
     position: fixed; top: 20px; right: 20px; z-index: 1000000;
     background: rgba(10, 15, 30, 0.96); color: #f1f5f9;
     border: 1px solid rgba(99, 102, 241, 0.5); border-radius: 14px;
-    padding: 18px; width: 310px; max-height: 80vh; overflow-y: auto;
+    padding: 18px; width: 320px; max-height: 85vh; overflow-y: auto;
     box-shadow: 0 12px 30px rgba(0,0,0,0.6);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 13px; line-height: 1.5;
@@ -722,7 +702,7 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
       <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#a5b4fc; animation: hud-pulse 1.5s infinite;"></span>
       Autopiloto JobAuto
     </div>
-    <div style="font-size:12px; color:#94a3b8; margin-bottom:2px;" id="hud-status">Iniciando escaneo...</div>
+    <div style="font-size:12px; color:#94a3b8; margin-bottom:2px;" id="hud-status">Escaneando...</div>
     <div style="font-size:11px; color:#64748b; margin-bottom:2px;" id="hud-page">Pagina: 1</div>
     <div style="font-size:11px; color:#64748b; margin-bottom:6px;" id="hud-progress">Progreso: -</div>
     <div id="hud-results" style="display:none; margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px; max-height:300px; overflow-y:auto;"></div>
@@ -730,7 +710,7 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
   document.body.appendChild(hud);
 
   let savedCount = 0;
-  let skippedCount = 0;
+  let totalCount = 0;
   let currentPage = 1;
   const maxPages = ap.maxPages || 5;
 
@@ -738,215 +718,129 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
     const el = document.getElementById('hud-status');
     if (el) el.textContent = statusText;
     const pageEl = document.getElementById('hud-page');
-    if (pageEl) pageEl.textContent = `Pagina: ${currentPage}/${maxPages} | Guardados: ${savedCount}`;
-    chrome.storage.local.set({ autopilot: { ...ap, status: statusText, savedCount, skippedCount, ...updates } });
+    if (pageEl) pageEl.textContent = `Pag: ${currentPage}/${maxPages} | Guardados: ${savedCount} | Total: ${totalCount}`;
+    chrome.storage.local.set({ autopilot: { ...ap, status: statusText, savedCount, totalCount, ...updates } });
   };
 
-  async function scrapeAndSave() {
+  async function scrapeAndSavePage() {
     await new Promise(r => setTimeout(r, 2000));
 
     const listings = scrapeSearchResults(ap.platform);
-
     if (listings.length === 0 && currentPage === 1) {
-      updateStatus('No se encontraron ofertas.', { active: false });
-      setTimeout(() => hud.remove(), 5000);
+      updateStatus('No se encontraron ofertas en esta plataforma.', { active: false });
+      setTimeout(() => hud.remove(), 6000);
       return;
     }
 
-    updateStatus(`${listings.length} ofertas en pagina ${currentPage}.`, { total: (ap.total || 0) + listings.length });
-
-    // Build profile keywords
-    let profileKeywords = [];
-    try {
-      const profileEndpoint = mode === 'job'
-        ? `${apiUrl}/api/profile/job`
-        : `${apiUrl}/api/profile/freelance`;
-      const res = await fetch(profileEndpoint, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const profile = await res.json();
-        const profileText = (profile.cvText || profile.freelanceOverview || profile.experienceSummary || '').toLowerCase();
-        const skills = (profile.skills || []).map(s => s.toLowerCase());
-        const words = profileText.split(/[\s,.;:()\[\]{}<>\/\\|@#$%^&*+=!?`~"'_-]+/);
-        const stopWords = new Set(['de','la','el','los','las','un','una','con','del','para','por','que','en','y','a','o','es','se','su','al','lo','como','mas','muy','pero','sin','the','and','for','with','from','this','that','have','has','are','was','not','but','you','all','can','had','her','his','been','will','would','about','each','which','their','when','what','los','las','una','como','para','porque']);
-        profileKeywords = [...new Set([...skills, ...words.filter(w => w.length > 3 && !stopWords.has(w))])].slice(0, 25);
-      }
-    } catch (e) {
-      console.warn('Could not fetch profile:', e);
-    }
-
-    // Add autopilot keywords (bilingual)
-    if (ap.keywords) {
-      const extraKeywords = ap.keywords.toLowerCase().split(/[\s,]+/).filter(w => w.length > 2);
-      profileKeywords = [...new Set([...profileKeywords, ...extraKeywords])].slice(0, 30);
-    }
-
-    // Also add English equivalents of common Spanish keywords
-    const bilingualMap = {
-      'desarrollador': ['developer', 'engineer'],
-      'diseno': ['design', 'designer'],
-      'datos': ['data'],
-      'analista': ['analyst'],
-      'gerente': ['manager'],
-      'proyecto': ['project'],
-      'soporte': ['support'],
-      'ventas': ['sales'],
-      'marketing': ['marketing'],
-      'contenido': ['content'],
-      'frontend': ['front-end', 'front end', 'frontend'],
-      'backend': ['back-end', 'back end', 'backend'],
-      'fullstack': ['full-stack', 'full stack'],
-      'react': ['reactjs', 'react.js'],
-      'node': ['nodejs', 'node.js'],
-      'python': ['django', 'flask'],
-    };
-    const expandedKeywords = new Set(profileKeywords);
-    for (const kw of profileKeywords) {
-      if (bilingualMap[kw]) {
-        bilingualMap[kw].forEach(w => expandedKeywords.add(w));
-      }
-    }
-    profileKeywords = [...expandedKeywords].slice(0, 40);
-
-    if (profileKeywords.length < 2) {
-      profileKeywords = ap.keywords ? ap.keywords.toLowerCase().split(/[\s,]+/).filter(w => w.length > 2) : ['developer', 'javascript', 'react', 'node', 'python', 'design'];
-    }
-
-    updateStatus(`Evaluando con ${profileKeywords.length} keywords...`);
+    totalCount += listings.length;
+    updateStatus(`${listings.length} ofertas en pagina ${currentPage}. Guardando...`);
 
     const resultsEl = document.getElementById('hud-results');
     resultsEl.style.display = 'block';
 
-    const threshold = ap.minScore || 10;
-    let i = 0;
+    const endpoint = mode === 'job'
+      ? `${apiUrl}/api/applications`
+      : `${apiUrl}/api/freelance/proposals`;
 
+    let i = 0;
     for (const listing of listings) {
       i++;
-      const progressEl = document.getElementById('hud-progress');
-      if (progressEl) progressEl.textContent = `Procesando: ${i}/${listings.length} | Guardados: ${savedCount}`;
-
-      const match = matchListingToProfile(listing, profileKeywords);
-
-      if (match.total >= threshold) {
-        try {
-          const endpoint = mode === 'job'
-            ? `${apiUrl}/api/applications`
-            : `${apiUrl}/api/freelance/proposals`;
-
-          const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              title: listing.title,
-              company: listing.company || 'Desconocido',
-              url: listing.url || window.location.href,
-              description: listing.snippet || '',
-              budget: listing.budget || '',
-              status: 'Saved',
-              platform: ap.platform.charAt(0).toUpperCase() + ap.platform.slice(1),
-              compatibilityScore: match.total,
-              compatibilityRationale: `Keywords: ${match.matched.join(', ')}`
-            })
-          });
-
-          if (res.ok) {
-            savedCount++;
-            const itemEl = document.createElement('div');
-            itemEl.style.cssText = 'padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:11px; margin-bottom:2px;';
-            const lnk = listing.url || '#';
-            itemEl.innerHTML = `
-              <div style="color:#10b981; font-weight:600;">+ ${listing.title.substring(0, 55)}</div>
-              <div style="color:#64748b;">${listing.company || ''} - Score: ${match.total}%</div>
-              ${lnk !== '#' ? `<a href="${lnk}" target="_blank" style="color:#6366f1; font-size:10px;">Ver oferta →</a>` : ''}
-            `;
-            resultsEl.appendChild(itemEl);
-          } else {
-            skippedCount++;
-          }
-        } catch (e) {
-          skippedCount++;
-        }
-      } else {
-        skippedCount++;
+      const stored = await new Promise(resolve => chrome.storage.local.get(['autopilot'], resolve));
+      if (!stored.autopilot?.active) {
+        updateStatus('Detenido.');
+        return;
       }
 
-      if (i < listings.length) await new Promise(r => setTimeout(r, 300));
+      const progressEl = document.getElementById('hud-progress');
+      if (progressEl) progressEl.textContent = `Guardando: ${i}/${listings.length} | Pag ${currentPage}`;
+
+      // Skip empty titles
+      if (!listing.title || listing.title.length < 3) continue;
+
+      try {
+        const payload = {
+          title: listing.title,
+          company: listing.company || 'Sin empresa',
+          url: listing.url || window.location.href,
+          description: listing.snippet || '',
+          budget: listing.budget || '',
+          status: 'Saved',
+          platform: ap.platform.charAt(0).toUpperCase() + ap.platform.slice(1),
+        };
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          savedCount++;
+          const itemEl = document.createElement('div');
+          itemEl.style.cssText = 'padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:11px;';
+          const lnk = listing.url || '#';
+          itemEl.innerHTML = `
+            <div style="color:#10b981; font-weight:600;">+ ${listing.title.substring(0, 55)}</div>
+            <div style="color:#64748b;">${listing.company || ''}${listing.budget ? ' · ' + listing.budget : ''}</div>
+            ${lnk !== '#' ? `<a href="${lnk}" target="_blank" style="color:#6366f1; font-size:10px;">Abrir →</a>` : ''}
+          `;
+          resultsEl.appendChild(itemEl);
+        }
+      } catch (e) {
+        // silently skip
+      }
+
+      await new Promise(r => setTimeout(r, 250));
     }
 
-    updateStatus(`Pagina ${currentPage} lista. ${savedCount} guardadas.`);
+    updateStatus(`Pagina ${currentPage} completada.`);
   }
 
   async function runAllPages() {
     while (currentPage <= maxPages) {
-      // Check if autopilot was stopped
       const stored = await new Promise(resolve => chrome.storage.local.get(['autopilot'], resolve));
       if (!stored.autopilot?.active) {
         updateStatus('Detenido por el usuario.', { active: false });
         return;
       }
 
-      await scrapeAndSave();
+      await scrapeAndSavePage();
 
       if (currentPage >= maxPages) break;
 
       const nextBtn = findNextPageButton();
       if (!nextBtn) {
-        updateStatus(`Sin mas paginas. Completado.`);
+        updateStatus(`Sin mas paginas.`);
         break;
       }
 
       currentPage++;
       updateStatus(`Navegando a pagina ${currentPage}...`);
       nextBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
       await new Promise(r => setTimeout(r, 1500));
       nextBtn.click();
-      await new Promise(r => setTimeout(r, 3000));
+      await new Promise(r => setTimeout(r, 3500));
     }
 
     const resultsEl = document.getElementById('hud-results');
     const footerEl = document.createElement('div');
     footerEl.style.cssText = 'margin-top:10px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1); text-align:center;';
     footerEl.innerHTML = `
-      <div style="color:#94a3b8; font-size:11px; margin-bottom:8px;">${savedCount} guardadas · ${skippedCount} omitidas · ${currentPage} paginas</div>
-      <a href="${apiUrl}" style="display:inline-block; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:#fff; padding:8px 16px; border-radius:8px; text-decoration:none; font-weight:600; font-size:12px;">Ir al Dashboard</a>
+      <div style="color:#34d399; font-size:12px; font-weight:600; margin-bottom:4px;">${savedCount} proyectos guardados en ${currentPage} paginas</div>
+      <div style="color:#94a3b8; font-size:10px; margin-bottom:8px;">Usa "Tailor con IA" en el Dashboard para analisis detallado</div>
+      <a href="${apiUrl}" style="display:inline-block; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:#fff; padding:8px 16px; border-radius:8px; text-decoration:none; font-weight:600; font-size:12px;">Ir al Dashboard →</a>
     `;
     resultsEl.appendChild(footerEl);
-
-    updateStatus(`Completado: ${savedCount} guardadas.`, { active: false, savedCount, skippedCount, totalPages: currentPage });
-
+    updateStatus(`Completado.`, { active: false, savedCount, totalCount });
+    chrome.storage.local.set({ autopilot: { ...ap, active: false, savedCount, totalCount } });
     setTimeout(() => { if (hud.parentNode) hud.remove(); }, 60000);
-    chrome.storage.local.set({ autopilot: { ...ap, active: false, savedCount, skippedCount } });
   }
 
   runAllPages().catch(err => {
     updateStatus(`Error: ${err.message}`, { active: false });
     setTimeout(() => hud.remove(), 10000);
   });
-}
-
-// Keep old findJobLinks for backwards compat
-function findJobLinks(platform) {
-  const links = Array.from(document.querySelectorAll('a'));
-  const urls = [];
-  const origin = window.location.origin;
-
-  links.forEach(a => {
-    let href = a.getAttribute('href');
-    if (!href) return;
-    if (href.startsWith('/')) href = origin + href;
-    else if (!href.startsWith('http')) return;
-
-    if (platform === 'freelancer' && href.includes('/projects/') && !href.includes('?') && !href.includes('/dashboard')) urls.push(href);
-    else if (platform === 'workana' && (href.includes('/job/') || href.includes('/proyecto/')) && !href.includes('?')) urls.push(href);
-    else if (platform === 'upwork' && href.includes('/jobs/') && !href.includes('/search/')) urls.push(href);
-    else if (platform === 'linkedin' && (href.includes('/view/') || href.includes('/jobs/view/'))) urls.push(href);
-    else if (platform === 'computrabajo' && (href.includes('/oferta-de-trabajo/') || href.includes('/trabajo/'))) urls.push(href);
-  });
-
-  return [...new Set(urls)].slice(0, 10);
 }
