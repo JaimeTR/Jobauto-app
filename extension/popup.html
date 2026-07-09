@@ -372,7 +372,14 @@
 
     <div class="login-form" id="login-form">
       <input type="email" id="login-email" placeholder="correo@ejemplo.com" autocomplete="email" />
-      <input type="password" id="login-password" placeholder="Contraseña" autocomplete="current-password" />
+      <div style="position: relative;">
+        <input type="password" id="login-password" placeholder="Contraseña" autocomplete="current-password" style="width: 100%; box-sizing: border-box; padding-right: 36px;" />
+        <button id="btn-toggle-password" type="button" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #6b7280; cursor: pointer; font-size: 14px; padding: 2px 4px; line-height: 1;">👁️</button>
+      </div>
+      <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #6b7280; cursor: pointer; margin: 2px 0;">
+        <input type="checkbox" id="login-remember" style="accent-color: #6366f1; width: 14px; height: 14px;" />
+        Recordar sesion en este navegador
+      </label>
       <button class="btn-primary" id="btn-login">Iniciar Sesión</button>
       <button class="btn-ghost" id="btn-open-web" style="margin-top: 2px;">Iniciar sesión en el navegador →</button>
       <div id="login-toast"></div>

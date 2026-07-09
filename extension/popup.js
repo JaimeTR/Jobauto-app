@@ -99,6 +99,12 @@ function bindButtons() {
   document.getElementById('btn-login').addEventListener('click', doLogin);
   document.getElementById('login-email').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-password').focus(); });
   document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  document.getElementById('btn-toggle-password').addEventListener('click', () => {
+    const pw = document.getElementById('login-password');
+    const btn = document.getElementById('btn-toggle-password');
+    if (pw.type === 'password') { pw.type = 'text'; btn.textContent = '🙈'; }
+    else { pw.type = 'password'; btn.textContent = '👁️'; }
+  });
   document.getElementById('btn-open-web').addEventListener('click', () => {
     chrome.storage.local.get(['apiUrl'], s => chrome.tabs.create({ url: s.apiUrl || 'http://localhost:3000' }));
   });
@@ -161,6 +167,7 @@ function bindButtons() {
 async function doLogin() {
   const email    = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
+  const remember = document.getElementById('login-remember')?.checked || false;
 
   if (!email || !password) { showLoginToast('Completa correo y contraseña.', 'error'); return; }
 
@@ -182,8 +189,7 @@ async function doLogin() {
         showView('2fa');
         startResendTimer();
       } else {
-        // Direct login (no 2FA configured)
-        chrome.storage.local.set({ token: data.token, email: data.email }, () => afterLogin(data.email));
+        chrome.storage.local.set({ token: data.token, email: data.email, remember }, () => afterLogin(data.email));
       }
     } catch (err) {
       showLoginToast(err.message, 'error');
@@ -200,7 +206,7 @@ async function do2FA() {
   const btn = document.getElementById('btn-verify');
   btn.disabled = true; btn.textContent = 'Verificando...';
 
-  chrome.storage.local.get(['apiUrl'], async (s) => {
+  chrome.storage.local.get(['apiUrl', 'remember'], async (s) => {
     const apiUrl = s.apiUrl || 'http://localhost:3000';
     try {
       const res  = await fetch(`${apiUrl}/api/auth/login-verify`, {
@@ -209,7 +215,7 @@ async function do2FA() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Código incorrecto');
-      chrome.storage.local.set({ token: data.token, email: data.email }, () => afterLogin(data.email));
+      chrome.storage.local.set({ token: data.token, email: data.email, remember: s.remember }, () => afterLogin(data.email));
     } catch (err) {
       showToast('twofa-toast', err.message, 'error');
     } finally {
@@ -249,9 +255,8 @@ function afterLogin(email) {
 }
 
 function doLogout() {
-  chrome.storage.local.remove(['token', 'email'], () => {
+  chrome.storage.local.remove(['token', 'email', 'remember'], () => {
     pendingEmail = '';
-    // Clear inputs
     ['login-email', 'login-password', 'code-input'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
