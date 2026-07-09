@@ -1439,10 +1439,12 @@ export default function App() {
             <Briefcase size={18} />
             <span>{mode === 'job' ? 'Tablero Trabajos' : mode === 'business' ? 'Clientes (Leads)' : 'Tablero Proyectos'}</span>
           </button>
-          <button className={`nav-item ${activeTab === 'leads' ? 'active' : ''}`} onClick={() => { setActiveTab('leads'); loadLeads(); }}>
-            <Target size={18} />
-            <span>Clientes (Leads)</span>
-          </button>
+          {mode === 'business' && (
+            <button className={`nav-item ${activeTab === 'leads' ? 'active' : ''}`} onClick={() => { setActiveTab('leads'); loadLeads(); }}>
+              <Target size={18} />
+              <span>Clientes (Leads)</span>
+            </button>
+          )}
           <button 
             className={`nav-item ${activeTab === 'alerts' ? 'active' : ''}`} 
             onClick={() => {
