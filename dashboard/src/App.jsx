@@ -370,7 +370,7 @@ export default function App() {
     if (token) {
       loadSettings();
       loadProfile();
-      loadApplications();
+      loadBoardData();
       loadInterviews();
       loadPortfolio();
       loadAlerts();
@@ -705,14 +705,20 @@ export default function App() {
     } catch (e) {}
   };
 
+  const loadBoardData = async () => {
+    if (mode === 'business') { loadLeads(); return; }
+    try {
+      const endpoint = mode === 'job' ? `${API_BASE}/applications` : `${API_BASE}/freelance/proposals`;
+      const res = await authFetch(endpoint);
+      if (res.ok) setApplications(await res.json());
+    } catch (e) {}
+  };
+
   const loadApplications = async () => {
     try {
       const endpoint = mode === 'job' ? `${API_BASE}/applications` : `${API_BASE}/freelance/proposals`;
       const res = await authFetch(endpoint);
-      if (res.ok) {
-        const data = await res.json();
-        setApplications(data);
-      }
+      if (res.ok) setApplications(await res.json());
     } catch (e) {}
   };
 
@@ -1429,9 +1435,9 @@ export default function App() {
         </div>
 
         <nav className="sidebar-nav">
-          <button className={`nav-item ${activeTab === 'board' ? 'active' : ''}`} onClick={() => setActiveTab('board')}>
+          <button className={`nav-item ${activeTab === 'board' ? 'active' : ''}`} onClick={() => { setActiveTab('board'); if (mode === 'business') setActiveTab('leads'); }}>
             <Briefcase size={18} />
-            <span>{mode === 'job' ? 'Tablero Trabajos' : mode === 'business' ? 'Tablero Proyectos' : 'Tablero Proyectos'}</span>
+            <span>{mode === 'job' ? 'Tablero Trabajos' : mode === 'business' ? 'Clientes (Leads)' : 'Tablero Proyectos'}</span>
           </button>
           <button className={`nav-item ${activeTab === 'leads' ? 'active' : ''}`} onClick={() => { setActiveTab('leads'); loadLeads(); }}>
             <Target size={18} />
@@ -1520,8 +1526,8 @@ export default function App() {
           )}
         </header>
 
-        {/* Section: Board */}
-        {activeTab === 'board' && (
+        {/* Section: Board (solo Freelance y Trabajo) */}
+        {activeTab === 'board' && mode !== 'business' && (
           <section className="content-section active">
             
             {/* Earnings monthly tracker */}
