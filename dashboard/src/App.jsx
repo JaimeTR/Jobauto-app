@@ -1583,41 +1583,44 @@ export default function App() {
                               </div>
                             </div>
 
-                            {/* Assigned to / Task tracking */}
-                            {app.assignedTo && (
-                              <div style={{ fontSize: '10px', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-                                <User size={10} /> {app.assignedTo}
+                            {/* Assigned avatar (Jira style) */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                {app.assignedTo ? (
+                                  <div title={app.assignedTo} style={{
+                                    width: '22px', height: '22px', borderRadius: '50%',
+                                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                    color: 'white', fontSize: '10px', fontWeight: 700,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: 'default'
+                                  }}>
+                                    {app.assignedTo.charAt(0).toUpperCase()}
+                                  </div>
+                                ) : (
+                                  <div style={{
+                                    width: '22px', height: '22px', borderRadius: '50%',
+                                    border: '1px dashed rgba(255,255,255,0.15)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    opacity: 0.4
+                                  }}>
+                                    <User size={11} style={{ color: '#6b7280' }} />
+                                  </div>
+                                )}
+                                {app.compatibilityScore ? <span className={`compatibility-pill ${compScoreClass}`}>{app.compatibilityScore}%</span> : null}
                               </div>
-                            )}
 
-                            {/* Edit / Delete buttons */}
-                            <div style={{ display: 'flex', gap: '4px', marginTop: '6px', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                              <button style={{ flex: 1, fontSize: '10px', padding: '4px 6px', border: '1px solid var(--border-color)', borderRadius: '5px', background: 'rgba(99,102,241,0.08)', color: '#a5b4fc', cursor: 'pointer' }}
-                                onClick={async (e) => { e.stopPropagation();
-                                  const name = prompt('Asignar a (nombre):', app.assignedTo || '');
-                                  if (name !== null) {
-                                    const ep = mode === 'job' ? `${API_BASE}/applications/${app.id}` : `${API_BASE}/freelance/proposals/${app.id}`;
-                                    await authFetch(ep, { method: 'PUT', body: JSON.stringify({ assignedTo: name }) });
-                                    loadApplications();
-                                  }
-                                }}>
-                                <User size={9} style={{display:'inline'}} /> Asignar
-                              </button>
-                              <button style={{ flex: 1, fontSize: '10px', padding: '4px 6px', border: '1px solid var(--border-color)', borderRadius: '5px', background: 'rgba(245,158,11,0.08)', color: '#f59e0b', cursor: 'pointer' }}
-                                onClick={(e) => { e.stopPropagation();
-                                  setCurrentAppId(app.id);
-                                  setShowDetailModal(true);
-                                }}>
-                                <Edit3 size={9} style={{display:'inline'}} /> Editar
-                              </button>
-                              <button style={{ fontSize: '10px', padding: '4px 6px', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '5px', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer' }}
-                                onClick={async (e) => { e.stopPropagation();
-                                  if (confirm('Eliminar esta tarjeta?')) {
-                                    await handleDeleteApp(app.id);
-                                  }
-                                }}>
-                                <Trash2 size={9} style={{display:'inline'}} />
-                              </button>
+                              <div style={{ display: 'flex', gap: '3px' }}>
+                                <button style={{ fontSize: '10px', padding: '3px 5px', border: '1px solid var(--border-color)', borderRadius: '4px', background: 'transparent', color: '#6b7280', cursor: 'pointer', lineHeight: 1 }}
+                                  onClick={(e) => { e.stopPropagation(); setCurrentAppId(app.id); setShowDetailModal(true); }}
+                                  title="Editar">
+                                  <Edit3 size={10} />
+                                </button>
+                                <button style={{ fontSize: '10px', padding: '3px 5px', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '4px', background: 'transparent', color: '#6b7280', cursor: 'pointer', lineHeight: 1 }}
+                                  onClick={async (e) => { e.stopPropagation(); if (confirm('Eliminar?')) await handleDeleteApp(app.id); }}
+                                  title="Eliminar">
+                                  <Trash2 size={10} />
+                                </button>
+                              </div>
                             </div>
 
                             {inactiveAlert && (
@@ -2356,6 +2359,37 @@ export default function App() {
                     <strong>Contacto:</strong> <a href={`mailto:${currentApp.contactEmail}`}>{currentApp.contactEmail}</a>
                   </div>
                 )}
+
+                {/* Asignar responsable */}
+                <div style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '12px' }}>
+                  <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '6px', fontWeight: 600 }}>Responsable</div>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <div style={{
+                      width: '28px', height: '28px', borderRadius: '50%',
+                      background: currentApp.assignedTo ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(255,255,255,0.05)',
+                      border: currentApp.assignedTo ? 'none' : '1px dashed rgba(255,255,255,0.15)',
+                      color: 'white', fontSize: '12px', fontWeight: 700,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                    }}>
+                      {currentApp.assignedTo ? currentApp.assignedTo.charAt(0).toUpperCase() : <User size={14} style={{ color: '#6b7280' }} />}
+                    </div>
+                    <input
+                      type="text"
+                      value={currentApp.assignedTo || ''}
+                      onChange={async (e) => {
+                        const name = e.target.value;
+                        setApplications(prev => prev.map(a => a.id === currentApp.id ? { ...a, assignedTo: name } : a));
+                        const ep = mode === 'job' ? `${API_BASE}/applications/${currentApp.id}` : `${API_BASE}/freelance/proposals/${currentApp.id}`;
+                        await authFetch(ep, { method: 'PUT', body: JSON.stringify({ assignedTo: name }) });
+                      }}
+                      placeholder="Nombre del encargado..."
+                      style={{
+                        flex: 1, background: '#121829', border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '6px', padding: '6px 10px', color: 'white', fontSize: '12px', outline: 'none'
+                      }}
+                    />
+                  </div>
+                </div>
 
                 <div className="status-control">
                   <label>Estado:</label>
