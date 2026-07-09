@@ -941,7 +941,21 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
   };
 
   async function scrapeAndSavePage() {
-    await new Promise(r => setTimeout(r, 2000));
+    // Longer wait for Google Maps (dynamic loading)
+    const isGoogleMaps = ap.platform === 'googlemaps';
+    if (isGoogleMaps) {
+      updateStatus('Google Maps cargando... esperando resultados...');
+      await new Promise(r => setTimeout(r, 5000));
+      // Scroll to load more results
+      for (let s = 0; s < 3; s++) {
+        window.scrollBy(0, 800);
+        await new Promise(r => setTimeout(r, 1500));
+      }
+      window.scrollTo(0, 0);
+      await new Promise(r => setTimeout(r, 2000));
+    } else {
+      await new Promise(r => setTimeout(r, 2000));
+    }
 
     const listings = scrapeSearchResults(ap.platform);
     if (listings.length === 0 && currentPage === 1) {
@@ -995,6 +1009,8 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
       try {
         let payload;
         if (ap.mode === 'business') {
+          // Check if title contains website info (some Google Maps cards show it)
+          const hasWebsite = listing.description?.includes('http') || listing.description?.includes('www.') || listing.url?.includes('http');
           payload = {
             title: listing.title,
             company: listing.company || 'Negocio local',
@@ -1004,7 +1020,8 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
             status: 'Saved',
             platform: 'Google Maps',
             contactEmail: '',
-            source: 'google_maps'
+            source: 'google_maps',
+            hasWebsite: hasWebsite
           };
         } else {
           const desc = [listing.snippet, listing.description].filter(Boolean).join(' ') || '';

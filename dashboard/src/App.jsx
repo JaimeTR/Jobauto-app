@@ -1640,6 +1640,15 @@ export default function App() {
                                     <DollarSign size={10} /> {budgetStr}
                                   </span>
                                 )}
+                                {/* Website badge for business mode */}
+                                {mode === 'business' && (
+                                  <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '4px', fontWeight: 600,
+                                    background: (app.hasWebsite || (app.description && app.description.includes('http'))) ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.12)',
+                                    color: (app.hasWebsite || (app.description && app.description.includes('http'))) ? '#34d399' : '#f87171'
+                                  }}>
+                                    {(app.hasWebsite || (app.description && app.description.includes('http'))) ? '🌐 Web' : '❌ Sin web'}
+                                  </span>
+                                )}
                               </div>
                             )}
 
