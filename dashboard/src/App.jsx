@@ -352,7 +352,7 @@ export default function App() {
     id: '', title: '', company: '', url: '', status: 'Saved', description: '', budget: '', contactEmail: '',
     estimatedHours: '', portfolioAttachments: '', publicProfileLinks: '', platform: 'General'
   });
-  const [portfolioForm, setPortfolioForm] = useState({ id: '', title: '', description: '', technologies: '', link: '' });
+  const [portfolioForm, setPortfolioForm] = useState({ id: '', title: '', description: '', technologies: '', link: '', rubro: 'General' });
   const [meetingForm, setMeetingForm] = useState({ title: '', date: '', time: '', location: '', notes: '', applicationId: '', proposalId: '' });
   const [rssInput, setRssInput] = useState('');
 
@@ -1455,10 +1455,16 @@ export default function App() {
             <span>Perfil</span>
           </button>
           {mode === 'freelance' && (
-            <button className={`nav-item ${activeTab === 'portfolio' ? 'active' : ''}`} onClick={() => setActiveTab('portfolio')}>
-              <Briefcase size={18} />
-              <span>Portafolio</span>
-            </button>
+            <>
+              <button className={`nav-item ${activeTab === 'portfolio' ? 'active' : ''}`} onClick={() => setActiveTab('portfolio')}>
+                <Briefcase size={18} />
+                <span>Portafolio</span>
+              </button>
+              <button className={`nav-item ${activeTab === 'alerts' ? 'active' : ''}`} onClick={() => { setActiveTab('alerts'); }}>
+                <Bell size={18} />
+                <span>Alertas RSS</span>
+              </button>
+            </>
           )}
           <button className={`nav-item ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => setActiveTab('calendar')}>
             <CalendarIcon size={18} />
@@ -1525,18 +1531,7 @@ export default function App() {
         {activeTab === 'board' && (
           <section className="content-section active">
             
-            {/* Earnings tracker - freelance y empresa */}
-            {(mode === 'freelance' || mode === 'business') && (
-              <div className="card" style={{ maxWidth: 'none', padding: '16px 24px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px' }}>
-                  <span style={{ fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}><TrendingUp size={16} style={{ color: 'var(--color-offer)' }} /> Meta Financiera Mensual:</span>
-                  <span><strong>${totalEarned} USD</strong> ganados de <strong>${targetEarnings} USD</strong> de meta ({targetPercent}%)</span>
-                </div>
-                <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: `${targetPercent}%`, height: '100%', background: 'linear-gradient(90deg, #10b981 0%, #6366f1 100%)', borderRadius: '4px', transition: 'width 0.5s ease' }} />
-                </div>
-              </div>
-            )}
+            {/* Se elimino meta financiera - cada proyecto tiene su propio precio */}
 
             <div className="kanban-board">
               {['Saved', 'Applied', 'Interviewing', 'Offer', 'Rejected'].map(col => {
@@ -1763,6 +1758,43 @@ export default function App() {
           </section>
         )}
 
+        {/* Section: Alertas RSS (solo Freelance) */}
+        {activeTab === 'alerts' && mode === 'freelance' && (
+          <section className="content-section active">
+            <div style={{ marginBottom: '16px' }}>
+              <h3>Alertas de Proyectos RSS</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Proyectos detectados automaticamente con +50% compatibilidad</p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {alerts.length === 0 ? (
+                <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+                  <Bell size={40} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
+                  <p style={{ color: 'var(--text-muted)' }}>Sin alertas. Agrega feeds RSS en Ajustes.</p>
+                </div>
+              ) : (
+                alerts.map(alert => {
+                  const cs = (alert.compatibilityScore || 0) >= 80 ? 'compatibility-high' : (alert.compatibilityScore || 0) >= 50 ? 'compatibility-medium' : 'compatibility-low';
+                  return (
+                    <div key={alert.id} className="card" style={{ padding: '16px', borderLeft: '3px solid var(--accent-primary)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <div>
+                          <strong>{alert.title}</strong>
+                          <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{alert.company}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                          <span className={`compatibility-pill ${cs}`}>{alert.compatibilityScore}%</span>
+                          <button className="btn btn-small btn-primary" onClick={() => handleImportAlertToBoard(alert)}>Importar</button>
+                          <button className="btn btn-small btn-danger btn-icon" onClick={() => handleDeleteAlert(alert.id)}><Trash2 size={12} /></button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </section>
+        )}
+
         {/* Section: Profile */}
         {activeTab === 'profile' && (
           <section className="content-section active" style={{ gap: '24px' }}>
@@ -1905,63 +1937,72 @@ export default function App() {
           </section>
         )}
 
-        {/* Section: Portfolio */}
+        {/* Section: Portfolio v2 - con rubros */}
         {activeTab === 'portfolio' && mode === 'freelance' && (
           <section className="content-section active">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px' }}>Proyectos de mi Portafolio</h3>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <AiProjectPanel token={token} onProjectCreated={async (data) => {
-                  await authFetch(`${API_BASE}/freelance/portfolio`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                      title: data.title || '',
-                      description: data.description || '',
-                      technologies: Array.isArray(data.technologies) ? data.technologies.join(', ') : data.technologies || '',
-                      link: data.link || '',
-                    }),
-                  });
-                  await loadPortfolio();
-                  showToast('¡Proyecto generado con IA y agregado!', 'success');
-                }} />
-                <button className="btn btn-primary" onClick={() => {
-                  setPortfolioForm({ id: '', title: '', description: '', technologies: '', link: '' });
-                  setShowPortfolioFormModal(true);
-                }}>
-                  <Plus size={16} />
-                  <span>Agregar Proyecto</span>
-                </button>
-              </div>
+            <div style={{ marginBottom: '16px' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', margin: '0 0 4px 0' }}>Portafolio por Rubro</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: 0 }}>
+                Organiza tus proyectos por categoria. Al enviar una propuesta, filtra por rubro para mostrar solo proyectos relevantes al cliente.
+              </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-              {portfolio.map(project => (
-                <div key={project.id} className="card" style={{ padding: '20px', maxWidth: 'none', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '16px' }}>{project.title}</h4>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <button className="btn btn-small btn-secondary" onClick={() => {
-                        setPortfolioForm(project);
-                        setShowPortfolioFormModal(true);
-                      }}>Editar</button>
-                      <button className="btn btn-small btn-danger btn-icon" onClick={() => handleDeletePortfolioItem(project.id)}>
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
+            {/* Rubro filters */}
+            {(() => {
+              const rubros = [...new Set(portfolio.map(p => (p.rubro || 'Sin categoría')).filter(Boolean))];
+              const [activeRubro, setActiveRubro] = useState('Todos');
+              const filteredPortfolio = activeRubro === 'Todos' ? portfolio : portfolio.filter(p => (p.rubro || 'Sin categoría') === activeRubro);
+              return (
+                <>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                    <button onClick={() => setActiveRubro('Todos')} style={{
+                      padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                      background: activeRubro === 'Todos' ? 'var(--accent-gradient)' : 'rgba(255,255,255,0.05)',
+                      color: activeRubro === 'Todos' ? 'white' : '#9ca3af',
+                      border: activeRubro === 'Todos' ? 'none' : '1px solid rgba(255,255,255,0.1)'
+                    }}>Todos</button>
+                    {rubros.map(r => (
+                      <button key={r} onClick={() => setActiveRubro(r)} style={{
+                        padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                        background: activeRubro === r ? 'var(--accent-gradient)' : 'rgba(255,255,255,0.05)',
+                        color: activeRubro === r ? 'white' : '#9ca3af',
+                        border: activeRubro === r ? 'none' : '1px solid rgba(255,255,255,0.1)'
+                      }}>{r}</button>
+                    ))}
                   </div>
-                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.4', flexGrow: '1' }}>{project.description}</p>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '2px 6px', width: 'fit-content' }}>
-                    ID Portafolio: <code>{project.id}</code>
+
+                  <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                    <AiProjectPanel token={token} onProjectCreated={async (data) => {
+                      await authFetch(`${API_BASE}/freelance/portfolio`, { method: 'POST', body: JSON.stringify({ title: data.title || '', description: data.description || '', technologies: Array.isArray(data.technologies) ? data.technologies.join(', ') : data.technologies || '', link: data.link || '', rubro: data.rubro || 'General' }) });
+                      await loadPortfolio(); showToast('Proyecto agregado!', 'success');
+                    }} />
+                    <button className="btn btn-primary" onClick={() => { setPortfolioForm({ id: '', title: '', description: '', technologies: '', link: '', rubro: 'General' }); setShowPortfolioFormModal(true); }}>
+                      <Plus size={16} /><span>Agregar Proyecto</span>
+                    </button>
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--accent-primary)', fontWeight: '600' }}>{project.technologies}</div>
-                  {project.link && (
-                    <a href={project.link} target="_blank" rel="noreferrer" style={{ fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      Enlace a demo <ExternalLink size={12} />
-                    </a>
-                  )}
-                </div>
-              ))}
-            </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+                    {filteredPortfolio.map(project => (
+                      <div key={project.id} className="card" style={{ padding: '16px', maxWidth: 'none', display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '3px solid var(--accent-primary)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '15px', margin: 0 }}>{project.title}</h4>
+                            {project.rubro && <span style={{ fontSize: '10px', background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>{project.rubro}</span>}
+                          </div>
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            <button className="btn btn-small btn-secondary" onClick={() => { setPortfolioForm(project); setShowPortfolioFormModal(true); }}>Editar</button>
+                            <button className="btn btn-small btn-danger btn-icon" onClick={() => handleDeletePortfolioItem(project.id)}><Trash2 size={12} /></button>
+                          </div>
+                        </div>
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4', flexGrow: '1' }}>{project.description}</p>
+                        <div style={{ fontSize: '11px', color: 'var(--accent-primary)', fontWeight: '600' }}>{project.technologies}</div>
+                        {project.link && <a href={project.link} target="_blank" rel="noreferrer" style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>Ver demo <ExternalLink size={10} /></a>}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
           </section>
         )}
 
@@ -2260,6 +2301,22 @@ export default function App() {
                 <div className="form-group">
                   <label>Descripción del Trabajo</label>
                   <textarea value={portfolioForm.description} onChange={e => setPortfolioForm({...portfolioForm, description: e.target.value})} rows={4} placeholder="Detalla qué hiciste, problemas resueltos..." required></textarea>
+                </div>
+                <div className="form-group">
+                  <label>Rubro / Categoria</label>
+                  <select value={portfolioForm.rubro || 'General'} onChange={e => setPortfolioForm({...portfolioForm, rubro: e.target.value})} style={{ background: '#121829', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '10px 14px', color: 'white', fontSize: '13px', outline: 'none', width: '100%' }}>
+                    <option value="General">General</option>
+                    <option value="Salud / Dental">Salud / Dental</option>
+                    <option value="E-commerce">E-commerce</option>
+                    <option value="Restaurantes">Restaurantes</option>
+                    <option value="Educacion">Educacion</option>
+                    <option value="Inmobiliaria">Inmobiliaria</option>
+                    <option value="Legal / Abogados">Legal / Abogados</option>
+                    <option value="Turismo">Turismo</option>
+                    <option value="Automotriz">Automotriz</option>
+                    <option value="Tecnologia">Tecnologia</option>
+                    <option value="Otro">Otro</option>
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Tecnologías Utilizadas</label>
