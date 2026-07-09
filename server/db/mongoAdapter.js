@@ -18,7 +18,7 @@ async function getDb() {
     console.log('Conectado a MongoDB con éxito en:', uri.split('@').pop());
   }
   
-  db = client.db();
+  db = client.db(process.env.MONGODB_DB || 'jobauto');
   return db;
 }
 
