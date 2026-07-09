@@ -304,7 +304,8 @@ export const mongoAdapter = {
       interviewPrep: app.interviewPrep || null,
       clientRedFlags: app.clientRedFlags || [],
       platform: app.platform || '',
-      budget: app.budget || ''
+      budget: app.budget || '',
+      assignedTo: app.assignedTo || ''
     };
     await database.collection('applications').insertOne(newApp);
     return newApp;
@@ -458,7 +459,8 @@ export const mongoAdapter = {
       suggestedProjects: proposal.suggestedProjects || [], 
       compatibilityScore: proposal.compatibilityScore || null,
       compatibilityRationale: proposal.compatibilityRationale || '',
-      interviewPrep: proposal.interviewPrep || null
+      interviewPrep: proposal.interviewPrep || null,
+      assignedTo: proposal.assignedTo || ''
     };
     await database.collection('proposals').insertOne(newProp);
     return newProp;

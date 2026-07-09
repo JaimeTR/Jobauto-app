@@ -32,7 +32,8 @@ import {
   Target,
   Phone,
   Star,
-  Building
+  Building,
+  Edit3
 } from 'lucide-react';
 import OnboardingWizard from './OnboardingWizard.jsx';
 
@@ -49,6 +50,14 @@ function safeStr(val, fallback = '') {
   }
   return String(val);
 }
+
+const statusColors = {
+  Saved: { bg: 'rgba(99,102,241,0.15)', text: '#a5b4fc' },
+  Applied: { bg: 'rgba(16,185,129,0.15)', text: '#34d399' },
+  Interviewing: { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b' },
+  Offer: { bg: 'rgba(16,185,129,0.2)', text: '#10b981' },
+  Rejected: { bg: 'rgba(239,68,68,0.12)', text: '#f87171' }
+};
 
 // ────────────────────────────────────────────────────────────────────────────
 // CvImportPanel – mini panel inside Profile tab to import/update from CV
@@ -1520,9 +1529,20 @@ export default function App() {
                               setGeneratedFollowUp('');
                               setActiveAiTab('cv');
                             }}
-                            style={{ borderLeft: inactiveAlert ? '3px solid var(--color-interviewing)' : '1px solid var(--border-color)' }}
+                            style={{ borderLeft: inactiveAlert ? '3px solid var(--color-interviewing)' : '1px solid var(--border-color)', position: 'relative' }}
                           >
-                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '6px' }}>
+                            {/* Status badge */}
+                            <div style={{
+                              position: 'absolute', top: '8px', right: '8px',
+                              fontSize: '9px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px',
+                              background: statusColors[app.status]?.bg || 'rgba(107,114,128,0.15)',
+                              color: statusColors[app.status]?.text || '#9ca3af',
+                              zIndex: 1
+                            }}>
+                              {getFriendlyStatusName(app.status)}
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '6px', paddingRight: '50px' }}>
                               <h4 style={{ flex: 1, margin: 0 }}>{titleStr}</h4>
                               {urlStr && (
                                 <a href={urlStr} target="_blank" rel="noreferrer"
@@ -1538,10 +1558,7 @@ export default function App() {
                             {(platformStr || budgetStr) && (
                               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                                 {platformStr && (
-                                  <span style={{
-                                    fontSize: '10px', background: 'rgba(99,102,241,0.15)', color: '#a5b4fc',
-                                    padding: '2px 6px', borderRadius: '4px', fontWeight: 600,
-                                  }}>
+                                  <span style={{ fontSize: '10px', background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
                                     {platformStr}
                                   </span>
                                 )}
@@ -1561,9 +1578,48 @@ export default function App() {
 
                             <div className="job-card-footer">
                               <span className="date">{new Date(app.dateAdded).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })}</span>
-                              {app.compatibilityScore ? <span className={`compatibility-pill ${compScoreClass}`}>{app.compatibilityScore}%</span> : null}
+                              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                {app.compatibilityScore ? <span className={`compatibility-pill ${compScoreClass}`}>{app.compatibilityScore}%</span> : null}
+                              </div>
                             </div>
-                            
+
+                            {/* Assigned to / Task tracking */}
+                            {app.assignedTo && (
+                              <div style={{ fontSize: '10px', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                                <User size={10} /> {app.assignedTo}
+                              </div>
+                            )}
+
+                            {/* Edit / Delete buttons */}
+                            <div style={{ display: 'flex', gap: '4px', marginTop: '6px', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                              <button style={{ flex: 1, fontSize: '10px', padding: '4px 6px', border: '1px solid var(--border-color)', borderRadius: '5px', background: 'rgba(99,102,241,0.08)', color: '#a5b4fc', cursor: 'pointer' }}
+                                onClick={async (e) => { e.stopPropagation();
+                                  const name = prompt('Asignar a (nombre):', app.assignedTo || '');
+                                  if (name !== null) {
+                                    const ep = mode === 'job' ? `${API_BASE}/applications/${app.id}` : `${API_BASE}/freelance/proposals/${app.id}`;
+                                    await authFetch(ep, { method: 'PUT', body: JSON.stringify({ assignedTo: name }) });
+                                    loadApplications();
+                                  }
+                                }}>
+                                <User size={9} style={{display:'inline'}} /> Asignar
+                              </button>
+                              <button style={{ flex: 1, fontSize: '10px', padding: '4px 6px', border: '1px solid var(--border-color)', borderRadius: '5px', background: 'rgba(245,158,11,0.08)', color: '#f59e0b', cursor: 'pointer' }}
+                                onClick={(e) => { e.stopPropagation();
+                                  setCurrentAppId(app.id);
+                                  setShowDetailModal(true);
+                                }}>
+                                <Edit3 size={9} style={{display:'inline'}} /> Editar
+                              </button>
+                              <button style={{ fontSize: '10px', padding: '4px 6px', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '5px', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer' }}
+                                onClick={async (e) => { e.stopPropagation();
+                                  if (confirm('Eliminar esta tarjeta?')) {
+                                    await handleDeleteApp(app.id);
+                                  }
+                                }}>
+                                <Trash2 size={9} style={{display:'inline'}} />
+                              </button>
+                            </div>
+
                             {inactiveAlert && (
                               <div style={{ marginTop: '4px', fontSize: '10px', color: 'var(--color-interviewing)', display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 'bold' }}>
                                 <AlertTriangle size={11} /> <span>Seguimiento pendiente</span>

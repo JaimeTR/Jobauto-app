@@ -364,7 +364,8 @@ export const jsonAdapter = {
       interviewPrep: app.interviewPrep || null,
       clientRedFlags: app.clientRedFlags || [],
       platform: app.platform || '',
-      budget: app.budget || ''
+      budget: app.budget || '',
+      assignedTo: app.assignedTo || ''
     };
     db.applications.push(newApp);
     await writeDb(db);
@@ -516,7 +517,8 @@ export const jsonAdapter = {
       suggestedProjects: proposal.suggestedProjects || [], 
       compatibilityScore: proposal.compatibilityScore || null,
       compatibilityRationale: proposal.compatibilityRationale || '',
-      interviewPrep: proposal.interviewPrep || null
+      interviewPrep: proposal.interviewPrep || null,
+      assignedTo: proposal.assignedTo || ''
     };
     db.proposals.push(newProp);
     await writeDb(db);
