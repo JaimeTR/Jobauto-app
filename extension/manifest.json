@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "JobAuto Extractor",
-  "version": "1.0",
-  "description": "Extrae ofertas de trabajo y proyectos freelance, y las envía a tu panel local de JobAuto",
+  "version": "1.2",
+  "description": "Extrae ofertas de trabajo y proyectos freelance. Autopilot con paginacion y busqueda bilingue.",
   "permissions": [
     "activeTab",
     "storage",

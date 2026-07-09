@@ -10,6 +10,13 @@ let resendInterval = null;
 document.addEventListener('DOMContentLoaded', async () => {
   bindButtons();
 
+  // Show extension version from manifest
+  const manifest = chrome.runtime.getManifest();
+  const versionEl = document.getElementById('ext-version');
+  if (versionEl && manifest.version) {
+    versionEl.textContent = 'v' + manifest.version;
+  }
+
   chrome.storage.local.get(['token', 'email', 'apiUrl', 'mode', 'guideSeen', 'autopilotKeywords', 'autopilotPlatform'], (s) => {
     const apiUrl = s.apiUrl || 'http://localhost:3000';
     document.getElementById('api-url-input').value = apiUrl;
