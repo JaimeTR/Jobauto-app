@@ -239,10 +239,9 @@ function scrapeJobData() {
 
   // 1. LinkedIn
   if (url.includes('linkedin.com')) {
-    const titleEl = document.querySelector('.job-details-jobs-unified-top-card__job-title, .jobs-unified-top-card__job-title, h1');
-    const companyEl = document.querySelector('.job-details-jobs-unified-top-card__company-name, .jobs-unified-top-card__company-name, .jobs-details-top-card__company-url');
-    const descEl = document.querySelector('#job-details, .jobs-description__content, .jobs-box__html-content');
-
+    const titleEl = document.querySelector('.job-details-jobs-unified-top-card__job-title, .jobs-unified-top-card__job-title, h1, [data-test-job-title]');
+    const companyEl = document.querySelector('.job-details-jobs-unified-top-card__company-name, .jobs-unified-top-card__company-name, .jobs-details-top-card__company-url, [data-test-company-name]');
+    const descEl = document.querySelector('#job-details, .jobs-description__content, .jobs-box__html-content, [data-test-job-description], .show-more-less-html__markup');
     if (titleEl) title = titleEl.innerText.trim();
     if (companyEl) company = companyEl.innerText.split('\n')[0].trim();
     if (descEl) description = descEl.innerText.trim();
@@ -320,13 +319,12 @@ function scrapeJobData() {
 
   // 8. Upwork
   else if (url.includes('upwork.com')) {
-    const titleEl = document.querySelector('.fe-proposal-job-title, h1');
-    const companyEl = document.querySelector('.fe-proposal-client-name, .client-location'); 
-    const descEl = document.querySelector('.job-description, [itemprop="description"]');
-    const budgetEl = document.querySelector('.job-features, .js-budget');
-
+    const titleEl = document.querySelector('h1, .fe-proposal-job-title, [data-test="jobTitle"], h2[itemprop="title"]');
+    const companyEl = document.querySelector('.fe-proposal-client-name, [data-test="clientInfo"], .client-location, [data-test="clientCountry"]');
+    const descEl = document.querySelector('.job-description, [itemprop="description"], [data-test="jobDescriptionText"], .air3-card-section p, .break-words');
+    const budgetEl = document.querySelector('.job-features, .js-budget, [data-test="jobBudget"], [data-test="proposalBudget"], .budget, [data-test="price"]');
     if (titleEl) title = titleEl.innerText.trim();
-    if (companyEl) company = companyEl.innerText.trim();
+    if (companyEl) company = companyEl.innerText.split('\n')[0].trim();
     if (descEl) description = descEl.innerText.trim();
     if (budgetEl) budget = budgetEl.innerText.trim();
   }
@@ -380,6 +378,35 @@ function scrapeJobData() {
     if (companyEl) company = companyEl.innerText.split('\n')[0].trim();
     if (descEl) description = descEl.innerText.trim();
     if (budgetEl) budget = budgetEl.innerText.trim();
+  }
+
+  // 13. Universal fallback for unknown platforms
+  if (!title || !description) {
+    if (!title) {
+      title = document.querySelector('h1')?.innerText?.trim() || '';
+    }
+    if (!description) {
+      const descSelectors = [
+        '[itemprop="description"]', '[data-testid="jobDescriptionText"]', '[data-test="job-description"]',
+        '#job-description', '.job-description', '.description', '[class*="desc"]:not([class*="header"])',
+        'article', 'main p', '.content p', '[role="main"] p'
+      ];
+      for (const sel of descSelectors) {
+        const el = document.querySelector(sel);
+        if (el && el.innerText.trim().length > 40) {
+          description = el.innerText.trim();
+          break;
+        }
+      }
+    }
+    if (!company) {
+      const companyEl = document.querySelector('[class*="company"], [class*="employer"], [class*="client"], [data-testid="company"]');
+      if (companyEl) company = companyEl.innerText.split('\n')[0].trim();
+    }
+    if (!budget) {
+      const budgetEl = document.querySelector('[class*="budget"], [class*="price"], [class*="salary"], [class*="rate"], [data-testid="price"]');
+      if (budgetEl) budget = budgetEl.innerText.replace(/\s+/g, ' ').trim();
+    }
   }
 
   // Fallbacks
@@ -523,13 +550,13 @@ function scrapeSearchResults(platform) {
 
   // ── LinkedIn ──
   if (host.includes('linkedin.com')) {
-    document.querySelectorAll('.job-card-container, .jobs-search-results__list-item, [data-job-id]').forEach(card => {
-      const title = cleanText(card.querySelector('.job-card-list__title, .job-card-container__link, .job-card-list__entity-lockup a, a[href*="/jobs/view/"]'));
-      const company = cleanText(card.querySelector('.job-card-container__company-name, .job-card-container__primary-description, .artdeco-entity-lockup__subtitle'));
-      const snippet = cleanText(card.querySelector('.job-card-container__metadata-wrapper, .job-card-list__metadata-wrapper'));
-      const link = card.querySelector('a[href*="/jobs/view/"], a[data-control-name="jobdetails"]')?.getAttribute('href') || '';
+    document.querySelectorAll('.job-card-container, .jobs-search-results__list-item, [data-job-id], .job-search-card, [data-view-name="job-card"]').forEach(card => {
+      const title = cleanText(card.querySelector('.job-card-list__title, .job-card-container__link, .job-card-list__entity-lockup a, a[href*="/jobs/view/"], [data-test-job-title]'));
+      const company = cleanText(card.querySelector('.job-card-container__company-name, .job-card-container__primary-description, .artdeco-entity-lockup__subtitle, [data-test-company-name]'));
+      const snippet = cleanText(card.querySelector('.job-card-container__metadata-wrapper, .job-card-list__metadata-wrapper, [data-test-job-description-snippet]'));
+      const link = card.querySelector('a[href*="/jobs/view/"], a[data-control-name="jobdetails"], [data-test-link="job-title"]')?.getAttribute('href') || '';
       const url = link.startsWith('/') ? origin + link : link;
-      if (title) listings.push({ title, company, snippet, budget: '', url });
+      if (title) listings.push({ title, company, snippet, budget: '', url, description: snippet });
     });
   }
 
@@ -571,14 +598,14 @@ function scrapeSearchResults(platform) {
 
   // ── Upwork (freelance) ──
   else if (host.includes('upwork.com')) {
-    document.querySelectorAll('.job-tile, [data-test="JobTile"], .up-card-section, section[data-test="JobsList"] > div > div').forEach(card => {
-      const title = cleanText(card.querySelector('.job-tile-title a, h2 a, h3 a, [data-test="jobTitle"]'));
-      const company = cleanText(card.querySelector('.client-rating-label, [data-test="clientCountry"], .text-muted'));
-      const snippet = cleanText(card.querySelector('.job-description-text, [data-test="jobDescription"], .job-description p'));
-      const budget = cleanText(card.querySelector('.is-featured, strong[data-test="jobBudget"], .job-tile-rate, [data-test="price"]'));
-      const url = card.querySelector('.job-tile-title a, h2 a, h3 a, [data-test="jobTitle"] a')?.getAttribute('href') || '';
+    document.querySelectorAll('.job-tile, [data-test="JobTile"], .up-card-section, section[data-test="JobsList"] > div > div, [class*="air3-card"]').forEach(card => {
+      const title = cleanText(card.querySelector('.job-tile-title a, h2 a, h3 a, [data-test="jobTitle"], a[href*="/jobs/"]'));
+      const company = cleanText(card.querySelector('.client-rating-label, [data-test="clientCountry"], .text-muted, [data-test="clientInfo"]'));
+      const snippet = cleanText(card.querySelector('.job-description-text, [data-test="jobDescription"], .job-description p, [class*="description"] p, [data-test="UpCLineClamp"]'));
+      const budget = cleanText(card.querySelector('.is-featured, strong[data-test="jobBudget"], .job-tile-rate, [data-test="price"], [data-test="jobInsights"]'));
+      const url = card.querySelector('.job-tile-title a, h2 a, h3 a, [data-test="jobTitle"] a, a[href*="/jobs/"]')?.getAttribute('href') || '';
       const fullUrl = url.startsWith('http') ? url : (url.startsWith('/') ? 'https://www.upwork.com' + url : '');
-      if (title) listings.push({ title, company, snippet, budget, url: fullUrl });
+      if (title) listings.push({ title, company, snippet, budget, url: fullUrl, description: snippet });
     });
   }
 
@@ -905,11 +932,12 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
             source: 'Google Maps'
           };
         } else {
+          const desc = [listing.snippet, listing.description].filter(Boolean).join(' ') || '';
           payload = {
             title: listing.title,
             company: listing.company || 'Sin empresa',
             url: listing.url || window.location.href,
-            description: listing.snippet || '',
+            description: desc || listing.snippet || '',
             budget: listing.budget || '',
             status: 'Saved',
             platform: ap.platform.charAt(0).toUpperCase() + ap.platform.slice(1),
