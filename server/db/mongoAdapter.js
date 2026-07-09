@@ -202,6 +202,59 @@ export const mongoAdapter = {
     return true;
   },
 
+  // --- LEADS ---
+  getLeads: async (userId) => {
+    const database = await getDb();
+    return (await database.collection('leads').find({ userId }).sort({ dateAdded: -1 }).toArray()).map(mapId);
+  },
+
+  getLead: async (userId, id) => {
+    const database = await getDb();
+    return mapId(await database.collection('leads').findOne({ userId, id }));
+  },
+
+  addLead: async (userId, lead) => {
+    const database = await getDb();
+    if (lead.website && await database.collection('leads').findOne({ userId, website: lead.website })) return null;
+    const newLead = {
+      id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
+      userId,
+      businessName: lead.businessName || '',
+      category: lead.category || '',
+      phone: lead.phone || '',
+      website: lead.website || '',
+      hasWebsite: lead.hasWebsite || false,
+      address: lead.address || '',
+      district: lead.district || '',
+      rating: lead.rating || '',
+      reviews: lead.reviews || '',
+      mapsUrl: lead.mapsUrl || '',
+      notes: lead.notes || '',
+      status: lead.status || 'Nuevo',
+      source: lead.source || 'Google Maps',
+      dateAdded: new Date().toISOString(),
+      dateContacted: null,
+      proposalGenerated: false,
+    };
+    await database.collection('leads').insertOne(newLead);
+    return mapId(newLead);
+  },
+
+  updateLead: async (userId, id, leadData) => {
+    const database = await getDb();
+    const old = await database.collection('leads').findOne({ userId, id });
+    if (!old) throw new Error('Lead no encontrado');
+    if (leadData.status === 'Contactado' && old.status !== 'Contactado') leadData.dateContacted = new Date().toISOString();
+    await database.collection('leads').updateOne({ userId, id }, { $set: leadData });
+    return mapId(await database.collection('leads').findOne({ userId, id }));
+  },
+
+  deleteLead: async (userId, id) => {
+    const database = await getDb();
+    await database.collection('leads').deleteOne({ userId, id });
+    return true;
+  },
+
   getJobProfile: async (userId) => {
     const database = await getDb();
     const doc = await database.collection('profiles').findOne({ userId });

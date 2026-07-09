@@ -18,7 +18,8 @@ const defaultMultiUserData = {
   portfolio: [],    // Array of items with { ..., userId }
   interviews: [],   // Array of items with { ..., userId }
   meetings: [],     // Array of items with { ..., userId }
-  alerts: []        // Array of items with { ..., userId }
+  alerts: [],       // Array of items with { ..., userId }
+  leads: []         // Array of items with { ..., userId }
 };
 
 export async function initDb() {
@@ -258,6 +259,63 @@ export const jsonAdapter = {
   deleteAlert: async (userId, id) => {
     const db = await readDb();
     db.alerts = db.alerts.filter(a => !(a.userId === userId && a.id === id));
+    await writeDb(db);
+    return true;
+  },
+
+  // --- LEADS (clientes potenciales) ---
+  getLeads: async (userId) => {
+    const db = await readDb();
+    return db.leads.filter(l => l.userId === userId).sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded));
+  },
+
+  getLead: async (userId, id) => {
+    const db = await readDb();
+    return db.leads.find(l => l.userId === userId && l.id === id) || null;
+  },
+
+  addLead: async (userId, lead) => {
+    const db = await readDb();
+    if (lead.website && db.leads.some(l => l.userId === userId && l.website === lead.website)) return null;
+    const newLead = {
+      id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
+      userId,
+      businessName: lead.businessName || '',
+      category: lead.category || '',
+      phone: lead.phone || '',
+      website: lead.website || '',
+      hasWebsite: lead.hasWebsite || false,
+      address: lead.address || '',
+      district: lead.district || '',
+      rating: lead.rating || '',
+      reviews: lead.reviews || '',
+      mapsUrl: lead.mapsUrl || '',
+      notes: lead.notes || '',
+      status: lead.status || 'Nuevo',
+      source: lead.source || 'Google Maps',
+      dateAdded: new Date().toISOString(),
+      dateContacted: null,
+      proposalGenerated: false,
+    };
+    db.leads.push(newLead);
+    await writeDb(db);
+    return newLead;
+  },
+
+  updateLead: async (userId, id, leadData) => {
+    const db = await readDb();
+    const idx = db.leads.findIndex(l => l.userId === userId && l.id === id);
+    if (idx === -1) throw new Error('Lead no encontrado');
+    const old = db.leads[idx];
+    if (leadData.status === 'Contactado' && old.status !== 'Contactado') leadData.dateContacted = new Date().toISOString();
+    db.leads[idx] = { ...old, ...leadData };
+    await writeDb(db);
+    return db.leads[idx];
+  },
+
+  deleteLead: async (userId, id) => {
+    const db = await readDb();
+    db.leads = db.leads.filter(l => !(l.userId === userId && l.id === id));
     await writeDb(db);
     return true;
   },

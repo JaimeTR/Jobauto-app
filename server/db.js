@@ -30,6 +30,12 @@ export const addAlert = adapter.addAlert;
 export const markAlertsAsRead = adapter.markAlertsAsRead;
 export const deleteAlert = adapter.deleteAlert;
 
+export const getLeads = adapter.getLeads;
+export const getLead = adapter.getLead;
+export const addLead = adapter.addLead;
+export const updateLead = adapter.updateLead;
+export const deleteLead = adapter.deleteLead;
+
 export const getJobProfile = adapter.getJobProfile;
 export const updateJobProfile = adapter.updateJobProfile;
 export const getApplications = adapter.getApplications;

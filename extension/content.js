@@ -735,6 +735,25 @@ function scrapeSearchResults(platform) {
     });
   }
 
+  // ── Google Maps (Business mode) ──
+  else if (host.includes('google.com/maps') || host.includes('google.com.pe/maps')) {
+    document.querySelectorAll('[role="feed"] > div, [data-result-id], .Nv2PK, .hfpxzc').forEach(card => {
+      const title = cleanText(card.querySelector('.qBF1Pd, .fontHeadlineSmall, [class*="name"], h3'));
+      const info = cleanText(card.querySelector('.W4Efsd, [class*="info"], .fontBodyMedium'));
+      const link = card.querySelector('a[href*="/maps/place/"]')?.getAttribute('href') || card.querySelector('a')?.getAttribute('href') || '';
+      const fullUrl = link.startsWith('http') ? link : (link.startsWith('/') ? 'https://www.google.com' + link : '');
+      const scoreEl = card.querySelector('.MW4etd, [class*="rating"]');
+      const score = scoreEl ? scoreEl.textContent.replace(/[^0-9.]/g, '').trim() : '';
+      const reviewsEl = card.querySelector('.UY7F9, [class*="review"]');
+      const reviews = reviewsEl ? reviewsEl.textContent.replace(/[^0-9]/g, '').trim() : '';
+      let website = '';
+      let hasWebsite = false;
+      const siteBtn = card.querySelector('a[data-value="Website"], a[aria-label*="sitio web" i], a[aria-label*="website" i]');
+      if (siteBtn) { website = siteBtn.getAttribute('href') || ''; hasWebsite = true; }
+      if (title) listings.push({ title, company: '', snippet: info || '', budget: '', url: fullUrl, description: info || '' });
+    });
+  }
+
   // Deduplicate by URL
   const seen = new Set();
   const unique = [];
@@ -851,7 +870,9 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
 
     const endpoint = mode === 'job'
       ? `${apiUrl}/api/applications`
-      : `${apiUrl}/api/freelance/proposals`;
+      : mode === 'business'
+        ? `${apiUrl}/api/leads`
+        : `${apiUrl}/api/freelance/proposals`;
 
     let i = 0;
     for (const listing of listings) {
@@ -869,15 +890,31 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
       if (!listing.title || listing.title.length < 3) continue;
 
       try {
-        const payload = {
-          title: listing.title,
-          company: listing.company || 'Sin empresa',
-          url: listing.url || window.location.href,
-          description: listing.snippet || '',
-          budget: listing.budget || '',
-          status: 'Saved',
-          platform: ap.platform.charAt(0).toUpperCase() + ap.platform.slice(1),
-        };
+        let payload;
+        if (ap.mode === 'business') {
+          payload = {
+            businessName: listing.title,
+            category: ap.keywords || '',
+            address: listing.snippet || '',
+            website: listing.url || '',
+            hasWebsite: false,
+            phone: '',
+            rating: listing.company || '',
+            mapsUrl: listing.url || window.location.href,
+            status: 'Nuevo',
+            source: 'Google Maps'
+          };
+        } else {
+          payload = {
+            title: listing.title,
+            company: listing.company || 'Sin empresa',
+            url: listing.url || window.location.href,
+            description: listing.snippet || '',
+            budget: listing.budget || '',
+            status: 'Saved',
+            platform: ap.platform.charAt(0).toUpperCase() + ap.platform.slice(1),
+          };
+        }
 
         const res = await fetch(endpoint, {
           method: 'POST',

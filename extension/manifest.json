@@ -45,6 +45,8 @@
         "*://*.remoteok.com/*",
         "*://*.weworkremotely.com/*",
         "*://*.arc.dev/*",
+        "*://*.google.com/maps/*",
+        "*://*.google.com.pe/maps/*",
         "*://localhost/*",
         "*://127.0.0.1/*"
       ],

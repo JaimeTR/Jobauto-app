@@ -247,7 +247,7 @@ export default function App() {
 
   // Global modes and tabs
   const [mode, setMode] = useState('freelance'); // freelance, job
-  const [activeTab, setActiveTab] = useState('board'); // board, profile, portfolio, calendar, alerts, settings
+  const [activeTab, setActiveTab] = useState('board'); // board, profile, portfolio, calendar, alerts, leads, settings
   
   // Data State
   const [profile, setProfile] = useState({
@@ -262,6 +262,7 @@ export default function App() {
   const [interviews, setInterviews] = useState([]);
   const [portfolio, setPortfolio] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const [leads, setLeads] = useState([]);
   
   // UI State
   const [toast, setToast] = useState({ message: '', type: 'success', active: false });
@@ -698,6 +699,13 @@ export default function App() {
         
         setAlerts(data);
       }
+    } catch (e) {}
+  };
+
+  const loadLeads = async () => {
+    try {
+      const res = await authFetch(`${API_BASE}/leads`);
+      if (res.ok) setLeads(await res.json());
     } catch (e) {}
   };
 

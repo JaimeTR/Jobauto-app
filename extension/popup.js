@@ -120,6 +120,7 @@ function bindButtons() {
   // MAIN
   document.getElementById('btn-logout').addEventListener('click', doLogout);
   document.getElementById('mode-freelance-btn').addEventListener('click', () => setMode('freelance'));
+  document.getElementById('mode-business-btn').addEventListener('click', () => setMode('business'));
   document.getElementById('mode-job-btn').addEventListener('click', () => setMode('job'));
   document.getElementById('btn-open-dashboard').addEventListener('click', () => {
     chrome.storage.local.get(['apiUrl'], s => chrome.tabs.create({ url: s.apiUrl || 'http://localhost:3000' }));
@@ -274,23 +275,22 @@ function startResendTimer() {
 function setMode(mode) {
   chrome.storage.local.set({ mode }, () => {
     updateModeUI(mode);
-    // Sync with web app via content.js
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]?.id) chrome.tabs.sendMessage(tabs[0].id, { action: 'modeChanged', mode });
     });
-    showMainToast(`Modo cambiado a ${mode === 'freelance' ? '🚀 Freelance' : '💼 Trabajo'}`);
+    const names = { freelance: 'Freelance', business: 'Empresa', job: 'Trabajo' };
+    showMainToast(`Modo cambiado a ${names[mode] || mode}`);
   });
 }
 
 function updateModeUI(mode) {
-  const freelanceBtn = document.getElementById('mode-freelance-btn');
-  const jobBtn       = document.getElementById('mode-job-btn');
-  if (!freelanceBtn || !jobBtn) return;
-  if (mode === 'job') {
-    jobBtn.classList.add('active');       freelanceBtn.classList.remove('active');
-  } else {
-    freelanceBtn.classList.add('active'); jobBtn.classList.remove('active');
-  }
+  const fBtn = document.getElementById('mode-freelance-btn');
+  const bBtn = document.getElementById('mode-business-btn');
+  const jBtn = document.getElementById('mode-job-btn');
+  if (!fBtn || !bBtn || !jBtn) return;
+  fBtn.classList.toggle('active', mode === 'freelance');
+  bBtn.classList.toggle('active', mode === 'business');
+  jBtn.classList.toggle('active', mode === 'job');
 }
 
 // ─── Server ───────────────────────────────────────────────────────────────────
@@ -383,12 +383,36 @@ function startAutopilot() {
   const threshold = parseInt(document.getElementById('autopilot-threshold')?.value || '10', 10);
 
   if (!keywords) {
-    showMainToast('Describe que buscas (ej: React, Node.js, Diseno)', 'error');
+    showMainToast('Describe que buscas.', 'error');
     return;
   }
 
   chrome.storage.local.get(['mode'], (s) => {
-    const mode = s.mode || 'job';
+    const mode = s.mode || 'freelance';
+
+    // Business mode: Google Maps search
+    if (mode === 'business') {
+      const searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(keywords)}`;
+      const ap = {
+        active: true,
+        keywords,
+        platform: 'googlemaps',
+        mode: 'business',
+        minScore: threshold,
+        maxPages: 3,
+        searchUrl,
+        status: 'Escaneando Google Maps...',
+        total: 0,
+        savedCount: 0,
+        timestamp: Date.now()
+      };
+      chrome.storage.local.set({ autopilot: ap, autopilotKeywords: keywords, autopilotPlatform: 'googlemaps' }, () => {
+        checkAutopilotState();
+        showMainToast(`Buscando negocios: "${keywords}" en Google Maps...`);
+        chrome.tabs.create({ url: searchUrl });
+      });
+      return;
+    }
 
     // Search URLs with sorting (newest first where possible)
     const searchUrls = {

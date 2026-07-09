@@ -44,7 +44,13 @@ import {
   // Alerts
   getAlerts,
   markAlertsAsRead,
-  deleteAlert
+  deleteAlert,
+  // Leads
+  getLeads,
+  getLead,
+  addLead,
+  updateLead,
+  deleteLead
 } from './db.js';
 import { 
   generateTailoredMaterials, 
@@ -525,6 +531,96 @@ app.delete('/api/alerts/:id', authenticateToken, async (req, res) => {
   try {
     await deleteAlert(req.userId, req.params.id);
     res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==========================================
+// MODO EMPRESA (LEADS) API
+// ==========================================
+
+app.get('/api/leads', authenticateToken, async (req, res) => {
+  try {
+    const leads = await getLeads(req.userId);
+    res.json(leads);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/leads/:id', authenticateToken, async (req, res) => {
+  try {
+    const lead = await getLead(req.userId, req.params.id);
+    if (!lead) return res.status(404).json({ error: 'Lead no encontrado' });
+    res.json(lead);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/leads', authenticateToken, async (req, res) => {
+  try {
+    const lead = await addLead(req.userId, req.body);
+    if (!lead) return res.status(409).json({ error: 'Lead duplicado (mismo website)' });
+    res.status(201).json(lead);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/leads/:id', authenticateToken, async (req, res) => {
+  try {
+    const lead = await updateLead(req.userId, req.params.id, req.body);
+    res.json(lead);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/leads/:id', authenticateToken, async (req, res) => {
+  try {
+    await deleteLead(req.userId, req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// IA - Generar propuesta para lead
+app.post('/api/leads/:id/generate-proposal', authenticateToken, aiRateLimiter, async (req, res) => {
+  try {
+    const lead = await getLead(req.userId, req.params.id);
+    if (!lead) return res.status(404).json({ error: 'Lead no encontrado' });
+    const profile = await getFreelanceProfile(req.userId);
+
+    const prompt = `
+Eres un experto en prospeccion de clientes y redaccion de propuestas comerciales para servicios de desarrollo web.
+
+PERFIL DEL FREELANCER:
+Nombre: ${profile.name || 'Freelancer'}
+Servicios: ${profile.freelanceOverview || profile.cvText || 'Desarrollo web profesional'}
+
+DATOS DEL CLIENTE POTENCIAL:
+Negocio: ${lead.businessName}
+Categoria: ${lead.category || 'No especificada'}
+Direccion: ${lead.address || 'No disponible'}
+Telefono: ${lead.phone || 'No disponible'}
+Sitio web actual: ${lead.website || 'No tiene sitio web'}
+${lead.hasWebsite ? 'EL NEGOCIO TIENE SITIO WEB. Enfocate en mejoras, rediseno o mantenimiento.' : 'EL NEGOCIO NO TIENE SITIO WEB. Enfocate en crearle presencia digital desde cero.'}
+
+Genera un JSON con:
+{
+  "subject": "Asunto del correo/propuesta (1 linea, atractivo)",
+  "proposal": "Propuesta comercial completa de 200-250 palabras en tono profesional y personalizado. Menciona como tus servicios de WordPress/desarrollo web pueden ayudar a su negocio especifico (${lead.category}). Si no tiene web, enfatiza la importancia de tener presencia digital. Si tiene web, sugiere mejoras concretas.",
+  "suggestedServices": ["servicio1", "servicio2", "servicio3"],
+  "callToAction": "Frase de cierre persuasiva para agendar una llamada o reunion",
+  "estimatedPrice": "Rango de precio sugerido en USD (ej: $300-$800)"
+}`;
+
+    const result = await callLLM(req.userId, prompt, true);
+    const updated = await updateLead(req.userId, req.params.id, { proposalGenerated: true });
+    res.json({ ...updated, proposal: result });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
