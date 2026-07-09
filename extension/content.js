@@ -368,6 +368,20 @@ function scrapeJobData() {
     if (descEl) description = descEl.innerText.trim();
   }
 
+  // 12. Generic scraper for new platforms (Contra, Wellfound, RemoteOK, WWR, Toptal, Arc, PPH)
+  else if (host.includes('contra.com') || host.includes('wellfound.com') || host.includes('remoteok.com') || 
+           host.includes('weworkremotely.com') || host.includes('toptal.com') || host.includes('arc.dev') ||
+           host.includes('peopleperhour.com')) {
+    const titleEl = document.querySelector('h1, h2, [class*="title"], [class*="heading"], [itemprop="title"]');
+    const companyEl = document.querySelector('[class*="company"], [class*="employer"], [class*="client"], [class*="organization"]');
+    const descEl = document.querySelector('[class*="description"], [class*="content"], [class*="details"], [itemprop="description"], article p');
+    const budgetEl = document.querySelector('[class*="budget"], [class*="salary"], [class*="rate"], [class*="price"], [class*="compensation"]');
+    if (titleEl) title = titleEl.innerText.trim();
+    if (companyEl) company = companyEl.innerText.split('\n')[0].trim();
+    if (descEl) description = descEl.innerText.trim();
+    if (budgetEl) budget = budgetEl.innerText.trim();
+  }
+
   // Fallbacks
   if (!title) title = document.title.split('|')[0].split('-')[0].trim() || 'Proyecto no detectado';
   if (!company) company = currentMode === 'job' ? 'Empresa no detectada' : 'Cliente no detectado';
@@ -386,6 +400,14 @@ function scrapeJobData() {
   else if (host.includes('upwork')) platform = 'Upwork';
   else if (host.includes('guru')) platform = 'Guru.com';
   else if (host.includes('fiverr')) platform = 'Fiverr';
+  else if (host.includes('contra')) platform = 'Contra';
+  else if (host.includes('peopleperhour')) platform = 'PeoplePerHour';
+  else if (host.includes('toptal')) platform = 'Toptal';
+  else if (host.includes('wellfound')) platform = 'Wellfound';
+  else if (host.includes('remoteok')) platform = 'RemoteOK';
+  else if (host.includes('weworkremotely')) platform = 'WeWorkRemotely';
+  else if (host.includes('arc.dev')) platform = 'Arc';
+  else if (host.includes('getonbrd')) platform = 'GetOnBoard';
 
   return {
     title,
@@ -621,6 +643,95 @@ function scrapeSearchResults(platform) {
       const url = card.querySelector('a[href*="/aviso/"], a[href*="/empleo/"]')?.getAttribute('href') || '';
       const fullUrl = url.startsWith('http') ? url : (url.startsWith('/') ? origin + url : '');
       if (title) listings.push({ title, company, snippet, budget: '', url: fullUrl });
+    });
+  }
+
+  // ── Contra ──
+  else if (host.includes('contra.com')) {
+    document.querySelectorAll('[class*="project"], [class*="opportunity"], [class*="job"]').forEach(card => {
+      const title = cleanText(card.querySelector('h2, h3, [class*="title"] a'));
+      const company = cleanText(card.querySelector('[class*="company"], [class*="client"]'));
+      const snippet = cleanText(card.querySelector('[class*="desc"], p'));
+      const budget = cleanText(card.querySelector('[class*="budget"], [class*="rate"], [class*="price"]'));
+      const url = card.querySelector('a[href*="/opportunity/"], a[href*="/project/"]')?.getAttribute('href') || '';
+      const fullUrl = url.startsWith('http') ? url : (url.startsWith('/') ? 'https://contra.com' + url : '');
+      if (title) listings.push({ title, company, snippet, budget, url: fullUrl });
+    });
+  }
+
+  // ── PeoplePerHour ──
+  else if (host.includes('peopleperhour.com')) {
+    document.querySelectorAll('.project-item, .job-listing, [class*="project"], [class*="job-card"]').forEach(card => {
+      const title = cleanText(card.querySelector('h2 a, h3 a, .title a'));
+      const company = cleanText(card.querySelector('.client-name, .buyer, [class*="client"]'));
+      const snippet = cleanText(card.querySelector('.description, [class*="desc"], p'));
+      const budget = cleanText(card.querySelector('.budget, .price, [class*="price"], [class*="budget"]'));
+      const url = card.querySelector('h2 a, h3 a')?.getAttribute('href') || '';
+      const fullUrl = url.startsWith('http') ? url : (url.startsWith('/') ? 'https://www.peopleperhour.com' + url : '');
+      if (title) listings.push({ title, company, snippet, budget, url: fullUrl });
+    });
+  }
+
+  // ── Toptal ──
+  else if (host.includes('toptal.com')) {
+    document.querySelectorAll('[class*="job"], [class*="project"], [class*="listing"]').forEach(card => {
+      const title = cleanText(card.querySelector('h2, h3, [class*="title"]'));
+      const company = cleanText(card.querySelector('[class*="company"], [class*="client"]'));
+      const snippet = cleanText(card.querySelector('[class*="desc"], p'));
+      const budget = cleanText(card.querySelector('[class*="budget"], [class*="rate"]'));
+      const url = card.querySelector('a')?.getAttribute('href') || '';
+      const fullUrl = url.startsWith('http') ? url : (url.startsWith('/') ? 'https://www.toptal.com' + url : '');
+      if (title) listings.push({ title, company, snippet, budget, url: fullUrl });
+    });
+  }
+
+  // ── Wellfound (AngelList) ──
+  else if (host.includes('wellfound.com')) {
+    document.querySelectorAll('[class*="job"], [class*="listing"], [class*="startup"]').forEach(card => {
+      const title = cleanText(card.querySelector('h2, h3, [class*="title"] a'));
+      const company = cleanText(card.querySelector('[class*="company"], [class*="startup"]'));
+      const snippet = cleanText(card.querySelector('[class*="desc"], [class*="tagline"], p'));
+      const budget = cleanText(card.querySelector('[class*="salary"], [class*="compensation"]'));
+      const url = card.querySelector('a[href*="/jobs/"], a[href*="/recruiting/"]')?.getAttribute('href') || '';
+      const fullUrl = url.startsWith('http') ? url : (url.startsWith('/') ? 'https://wellfound.com' + url : '');
+      if (title) listings.push({ title, company, snippet, budget, url: fullUrl });
+    });
+  }
+
+  // ── Remote OK ──
+  else if (host.includes('remoteok.com')) {
+    document.querySelectorAll('tr.job, [class*="job"], [data-id]').forEach(card => {
+      const title = cleanText(card.querySelector('h2, [class*="title"], a[href*="/remote-jobs/"]'));
+      const company = cleanText(card.querySelector('[class*="company"], h3, .company'));
+      const snippet = cleanText(card.querySelector('[class*="desc"], .description, .tags'));
+      const url = card.querySelector('a[href*="/remote-jobs/"]')?.getAttribute('href') || '';
+      const fullUrl = url.startsWith('http') ? url : (url.startsWith('/') ? 'https://remoteok.com' + url : '');
+      if (title) listings.push({ title, company, snippet, budget: '', url: fullUrl });
+    });
+  }
+
+  // ── We Work Remotely ──
+  else if (host.includes('weworkremotely.com')) {
+    document.querySelectorAll('li.feature, .job, [class*="job"], [class*="listing"]').forEach(card => {
+      const title = cleanText(card.querySelector('h2, h3, [class*="title"] a, a[href*="/jobs/"]'));
+      const company = cleanText(card.querySelector('.company, [class*="company"], h4'));
+      const snippet = cleanText(card.querySelector('[class*="desc"], p'));
+      const url = card.querySelector('a[href*="/jobs/"]')?.getAttribute('href') || '';
+      const fullUrl = url.startsWith('http') ? url : (url.startsWith('/') ? 'https://weworkremotely.com' + url : '');
+      if (title) listings.push({ title, company, snippet, budget: '', url: fullUrl });
+    });
+  }
+
+  // ── Arc () ──
+  else if (host.includes('arc.dev')) {
+    document.querySelectorAll('[class*="job"], [class*="listing"], article').forEach(card => {
+      const title = cleanText(card.querySelector('h2, h3, [class*="title"] a'));
+      const company = cleanText(card.querySelector('[class*="company"], h4'));
+      const snippet = cleanText(card.querySelector('[class*="desc"], p'));
+      const budget = cleanText(card.querySelector('[class*="salary"], [class*="comp"]'));
+      const url = card.querySelector('a[href*="/jobs/"], a[href*="/job/"]')?.getAttribute('href') || '';
+      const fullUrl = url.startsWith('http') ? url : (url.startsWith('/') ? 'https://arc.dev' + url : '');
+      if (title) listings.push({ title, company, snippet, budget, url: fullUrl });
     });
   }
 

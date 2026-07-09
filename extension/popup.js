@@ -394,12 +394,21 @@ function startAutopilot() {
     const searchUrls = {
       upwork: `https://www.upwork.com/nx/search/jobs/?q=${encodeURIComponent(keywords)}&sort=recency`,
       freelancer: `https://www.freelancer.com/jobs/${encodeURIComponent(keywords)}/?sort=submitdate`,
-      workana: `https://www.workana.com/jobs?query=${encodeURIComponent(keywords)}&sort=recent`,
       fiverr: `https://www.fiverr.com/search/gigs?query=${encodeURIComponent(keywords)}&sort=recency`,
+      workana: `https://www.workana.com/jobs?query=${encodeURIComponent(keywords)}&sort=recent`,
+      contra: `https://contra.com/search?query=${encodeURIComponent(keywords)}`,
+      peopleperhour: `https://www.peopleperhour.com/freelance-jobs?keywords=${encodeURIComponent(keywords)}`,
+      guru: `https://www.guru.com/d/jobs/skill/${encodeURIComponent(keywords.replace(/\s+/g, '-'))}/`,
+      toptal: `https://www.toptal.com/freelance-jobs?search=${encodeURIComponent(keywords)}`,
+      wellfound: `https://wellfound.com/jobs?search=${encodeURIComponent(keywords)}`,
+      remoteok: `https://remoteok.com/remote-${encodeURIComponent(keywords.replace(/\s+/g, '-'))}-jobs`,
+      weworkremotely: `https://weworkremotely.com/remote-jobs/search?term=${encodeURIComponent(keywords)}`,
+      arc: `https://arc.dev/remote-jobs?search=${encodeURIComponent(keywords)}`,
       linkedin: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(keywords)}&sortBy=DD`,
       indeed: `https://www.indeed.com/jobs?q=${encodeURIComponent(keywords)}&sort=date`,
       computrabajo: `https://www.computrabajo.com/trabajo-de-${encodeURIComponent(keywords)}?ord=fecha`,
-      getonbrd: `https://www.getonbrd.com/trabajos?search=${encodeURIComponent(keywords)}&sort=date`,
+      getonbrd: `https://www.getonbrd.com/trabajos?search=${encodeURIComponent(keywords)}`,
+      infojobs: `https://www.infojobs.net/jobsearch/search?keyword=${encodeURIComponent(keywords)}&sort=date`,
       bumeran: `https://www.bumeran.com.pe/empleos-busqueda-${encodeURIComponent(keywords)}.html?orden=2`
     };
 
