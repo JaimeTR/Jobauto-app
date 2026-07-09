@@ -51,7 +51,8 @@ import {
   generateInterviewPrep, 
   generateFreelanceProposal,
   generatePlatformBio,
-  generateFollowUpMessage
+  generateFollowUpMessage,
+  callLLM
 } from './ai.js';
 import { pollAllFeeds } from './services/rssListener.js';
 import { verifyToken, generateToken, verifyPassword } from './utils/auth.js';
@@ -398,8 +399,53 @@ app.post('/api/profile/extract-cv', authenticateToken, upload.single('cvFile'), 
     const extracted = await extractCvDataWithAI(text, apiKey);
     res.json({ success: true, data: extracted });
   } catch (error) {
-    console.error('[CV Extract Error]', error.message);
+    console.error('[CV Extract Error]', error);
     res.status(500).json({ error: `Error al analizar el CV: ${error.message}` });
+  }
+});
+
+// POST /api/profile/extract-freelance - Analizar perfil freelance desde overview + portafolio
+app.post('/api/profile/extract-freelance', authenticateToken, async (req, res) => {
+  try {
+    const { overview, portfolioLinks, hourlyRate } = req.body;
+
+    if (!overview || overview.trim().length < 20) {
+      return res.status(400).json({ error: 'Describe tu perfil profesional (minimo 20 caracteres).' });
+    }
+
+    const linksText = (portfolioLinks || []).filter(Boolean).map((l, i) => `${i + 1}. ${l}`).join('\n');
+    const prompt = `
+Analiza la siguiente informacion de un freelancer y extrae un perfil profesional estructurado. Responde SOLO con el JSON, sin markdown.
+
+DESCRIPCION DEL FREELANCER:
+${overview}
+
+TARIFA POR HORA SUGERIDA: $${hourlyRate || '25'}/hora
+
+LINKS DE PORTAFOLIO:
+${linksText || 'No se proporcionaron links.'}
+
+Estructura JSON a devolver:
+{
+  "name": "",
+  "email": "",
+  "location": "",
+  "linkedin": "",
+  "github": "",
+  "website": "",
+  "hourlyRate": "${hourlyRate || '25'}",
+  "freelanceOverview": "Resumen profesional de 3-4 lineas optimizado para plataformas freelance, destacando experiencia, tecnologias y logros clave en base a la descripcion proporcionada",
+  "skills": ["habilidad1", "habilidad2", "habilidad3"],
+  "headline": "Titulo profesional llamativo de 1 linea (ej: Senior Full-Stack Developer | React & Node.js Specialist)",
+  "niche": "Nicho o especialidad principal detectada"
+}
+
+Si algun campo no se puede inferir, deja el string vacio. El freelanceOverview debe ser profesional y persuasivo, NO copies el texto original sino mejoralo.`;
+    const resultText = await callLLM(req.userId, prompt, true);
+    res.json({ success: true, data: resultText });
+  } catch (error) {
+    console.error('[Freelance Extract Error]', error);
+    res.status(500).json({ error: `Error al analizar perfil freelance: ${error.message}` });
   }
 });
 

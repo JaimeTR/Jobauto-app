@@ -264,3 +264,5 @@ Responde únicamente con el objeto JSON, sin texto fuera del JSON.
 
   return await callLLM(userId, prompt, true);
 }
+
+export { callLLM };

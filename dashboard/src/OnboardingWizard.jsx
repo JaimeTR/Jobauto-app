@@ -2,28 +2,26 @@ import { useState, useRef } from 'react';
 
 const API_BASE = '/api';
 
-/**
- * OnboardingWizard – Guía al nuevo usuario en 3 pasos:
- * 1. Elegir modo (Freelance o Empleo)
- * 2. Cargar/pegar CV para extracción con IA
- * 3. Agregar primer proyecto (opcional)
- * Al finalizar llama a onComplete(profileData, portfolioItem, selectedMode)
- */
 export default function OnboardingWizard({ token, onComplete }) {
   const [step, setStep] = useState(1);
   const [selectedMode, setSelectedMode] = useState('freelance');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ msg: '', type: '' });
 
-  // Paso 2: CV
-  const [cvInputMode, setCvInputMode] = useState('file'); // 'file' | 'text'
+  // === JOB: CV ===
+  const [cvInputMode, setCvInputMode] = useState('file');
   const [cvText, setCvText] = useState('');
   const [cvFile, setCvFile] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [extractedProfile, setExtractedProfile] = useState(null);
   const fileInputRef = useRef();
 
-  // Paso 3: Proyecto
+  // === FREELANCE: Portfolio + Overview ===
+  const [freelanceOverview, setFreelanceOverview] = useState('');
+  const [hourlyRate, setHourlyRate] = useState('25');
+  const [portfolioLinks, setPortfolioLinks] = useState(['', '', '']);
+
+  // === STEP 3: Project ===
   const [projectText, setProjectText] = useState('');
   const [extractedProject, setExtractedProject] = useState(null);
 
@@ -32,7 +30,7 @@ export default function OnboardingWizard({ token, onComplete }) {
     setTimeout(() => setToast({ msg: '', type: '' }), 4000);
   };
 
-  // --- Paso 2: Extracción de CV ---
+  // === JOB: Extraer CV ===
   const handleExtractCv = async () => {
     setLoading(true);
     try {
@@ -56,11 +54,10 @@ export default function OnboardingWizard({ token, onComplete }) {
         setLoading(false);
         return;
       }
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setExtractedProfile(data.data);
-      showToast('¡CV analizado! Revisa y corrige los datos si es necesario.');
+      showToast('CV analizado! Revisa y corrige los datos.');
     } catch (err) {
       showToast(err.message || 'Error al analizar el CV.', 'error');
     } finally {
@@ -68,7 +65,36 @@ export default function OnboardingWizard({ token, onComplete }) {
     }
   };
 
-  // --- Paso 3: Extracción de Proyecto ---
+  // === FREELANCE: Extraer perfil desde portfolio + overview ===
+  const handleExtractFreelance = async () => {
+    if (!freelanceOverview.trim() && portfolioLinks.every(l => !l.trim())) {
+      showToast('Describe tu perfil o agrega al menos un link de portafolio.', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      const links = portfolioLinks.map(l => l.trim()).filter(Boolean);
+      const res = await fetch(`${API_BASE}/profile/extract-freelance`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          overview: freelanceOverview,
+          portfolioLinks: links,
+          hourlyRate,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setExtractedProfile(data.data);
+      showToast('Perfil analizado! Revisa los datos.');
+    } catch (err) {
+      showToast(err.message || 'Error al analizar el perfil freelance.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // === STEP 3: Extraer proyecto ===
   const handleExtractProject = async () => {
     if (!projectText.trim()) {
       showToast('Describe tu proyecto primero.', 'error');
@@ -84,7 +110,7 @@ export default function OnboardingWizard({ token, onComplete }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setExtractedProject(data.data);
-      showToast('¡Proyecto generado con IA! Revisa los datos.');
+      showToast('Proyecto generado con IA! Revisa los datos.');
     } catch (err) {
       showToast(err.message || 'Error al generar el proyecto.', 'error');
     } finally {
@@ -92,12 +118,21 @@ export default function OnboardingWizard({ token, onComplete }) {
     }
   };
 
-  // --- Finalizar Onboarding ---
   const handleFinish = () => {
-    onComplete(extractedProfile, extractedProject, selectedMode);
+    const profileData = extractedProfile || {};
+    if (!extractedProfile && selectedMode === 'freelance') {
+      profileData.freelanceOverview = freelanceOverview;
+      profileData.hourlyRate = hourlyRate;
+      profileData.name = '';
+      profileData.email = '';
+    }
+    onComplete(profileData, extractedProject, selectedMode, {
+      freelanceOverview,
+      hourlyRate,
+      portfolioLinks: portfolioLinks.filter(l => l.trim()),
+    });
   };
 
-  // --- Drag & Drop ---
   const handleDrop = (e) => {
     e.preventDefault();
     setDragging(false);
@@ -105,12 +140,25 @@ export default function OnboardingWizard({ token, onComplete }) {
     if (file) setCvFile(file);
   };
 
-  // --- Render ---
-  const stepTitles = [
-    '¿Cómo usarás JobAuto?',
-    'Importa tu Currículum',
-    'Agrega tu primer proyecto',
-  ];
+  const updatePortfolioLink = (index, value) => {
+    const updated = [...portfolioLinks];
+    updated[index] = value;
+    setPortfolioLinks(updated);
+  };
+
+  const addPortfolioLink = () => {
+    setPortfolioLinks([...portfolioLinks, '']);
+  };
+
+  const removePortfolioLink = (index) => {
+    if (portfolioLinks.length <= 1) return;
+    setPortfolioLinks(portfolioLinks.filter((_, i) => i !== index));
+  };
+
+  const titles = {
+    job: ['Como usaras JobAuto?', 'Importa tu Curriculum', 'Agrega tu primer proyecto'],
+    freelance: ['Como usaras JobAuto?', 'Configura tu Perfil Freelance', 'Agrega tu primer proyecto'],
+  };
 
   const containerStyle = {
     position: 'fixed', inset: 0, background: '#060913',
@@ -124,18 +172,20 @@ export default function OnboardingWizard({ token, onComplete }) {
     borderRadius: '20px',
     padding: '40px 36px',
     width: '100%',
-    maxWidth: '520px',
+    maxWidth: '540px',
+    maxHeight: '90vh',
+    overflowY: 'auto',
     boxShadow: '0 32px 64px rgba(0,0,0,0.5)',
     display: 'flex',
     flexDirection: 'column',
-    gap: '24px',
+    gap: '20px',
   };
 
   const btnPrimary = {
     background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
     color: 'white', border: 'none', borderRadius: '10px',
     padding: '12px 24px', fontSize: '14px', fontWeight: '600',
-    cursor: 'pointer', width: '100%', marginTop: '4px',
+    cursor: 'pointer', width: '100%', marginTop: '2px',
     transition: 'opacity 0.2s',
   };
 
@@ -150,6 +200,8 @@ export default function OnboardingWizard({ token, onComplete }) {
     borderRadius: '8px', padding: '10px 14px', color: 'white',
     fontSize: '13px', outline: 'none', width: '100%', boxSizing: 'border-box',
   };
+
+  const currentTitles = titles[selectedMode];
 
   return (
     <div style={containerStyle}>
@@ -172,8 +224,11 @@ export default function OnboardingWizard({ token, onComplete }) {
             Paso {step} de 3
           </div>
           <h2 style={{ fontSize: '22px', fontWeight: '700', color: 'white', margin: 0 }}>
-            {stepTitles[step - 1]}
+            {currentTitles[step - 1]}
           </h2>
+          <p style={{ color: '#6b7280', fontSize: '12px', marginTop: '6px' }}>
+            {selectedMode === 'freelance' ? 'Modo Freelance' : 'Modo Empleo'}
+          </p>
         </div>
 
         {/* Toast */}
@@ -188,16 +243,17 @@ export default function OnboardingWizard({ token, onComplete }) {
           </div>
         )}
 
-        {/* ===== PASO 1: MODO ===== */}
+        {/* ===== STEP 1: MODE ===== */}
         {step === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0, lineHeight: '1.6' }}>
-              Selecciona tu modo de trabajo principal. Esto determina qué perfil y datos se usarán por defecto. Siempre podrás cambiar el modo después.
+              Selecciona tu modo de trabajo principal. Este se usara por defecto al iniciar. Podes cambiarlo despues.
             </p>
+
             <div style={{ display: 'flex', gap: '12px' }}>
               {[
-                { id: 'freelance', emoji: '🚀', title: 'Freelance', desc: 'Proyectos, propuestas y portafolio' },
-                { id: 'job', emoji: '💼', title: 'Empleo', desc: 'Vacantes, aplicaciones y entrevistas' },
+                { id: 'freelance', emoji: '🚀', title: 'Freelance', desc: 'Proyectos, propuestas y portafolio', note: 'Analiza tu portafolio y genera pitches' },
+                { id: 'job', emoji: '💼', title: 'Empleo', desc: 'Vacantes, CVs y entrevistas', note: 'Analiza tu CV y genera cartas adaptadas' },
               ].map(m => (
                 <div
                   key={m.id}
@@ -211,26 +267,27 @@ export default function OnboardingWizard({ token, onComplete }) {
                     boxShadow: selectedMode === m.id ? '0 0 20px rgba(99,102,241,0.2)' : 'none',
                   }}
                 >
-                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>{m.emoji}</div>
+                  <div style={{ fontSize: '32px', marginBottom: '6px' }}>{m.emoji}</div>
                   <div style={{ color: 'white', fontWeight: '700', fontSize: '15px' }}>{m.title}</div>
-                  <div style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px' }}>{m.desc}</div>
+                  <div style={{ color: '#6b7280', fontSize: '12px', marginTop: '3px' }}>{m.desc}</div>
+                  <div style={{ color: '#4b5563', fontSize: '11px', marginTop: '5px', lineHeight: '1.4' }}>{m.note}</div>
                 </div>
               ))}
             </div>
+
             <button style={btnPrimary} onClick={() => setStep(2)}>
               Continuar →
             </button>
           </div>
         )}
 
-        {/* ===== PASO 2: CV ===== */}
-        {step === 2 && (
+        {/* ===== STEP 2: JOB - CV ===== */}
+        {step === 2 && selectedMode === 'job' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0, lineHeight: '1.6' }}>
-              La IA extraerá tu nombre, contacto, experiencia y más para rellenar tu perfil automáticamente. Soporta PDF, Word (.docx) y texto.
+              Subi tu CV. La IA extraera tu nombre, contacto, experiencia y habilidades.
             </p>
 
-            {/* Selector de modo de entrada */}
             <div style={{ display: 'flex', gap: '8px' }}>
               {['file', 'text'].map(m => (
                 <button key={m} onClick={() => setCvInputMode(m)} style={{
@@ -244,7 +301,6 @@ export default function OnboardingWizard({ token, onComplete }) {
               ))}
             </div>
 
-            {/* Subida de archivo */}
             {cvInputMode === 'file' && (
               <div
                 onDragOver={e => { e.preventDefault(); setDragging(true); }}
@@ -258,83 +314,47 @@ export default function OnboardingWizard({ token, onComplete }) {
                   transition: 'all 0.2s',
                 }}
               >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,.docx,.txt"
-                  style={{ display: 'none' }}
-                  onChange={e => setCvFile(e.target.files[0])}
-                />
-                <div style={{ fontSize: '28px', marginBottom: '8px' }}>
-                  {cvFile ? '✅' : '📄'}
-                </div>
+                <input ref={fileInputRef} type="file" accept=".pdf,.docx,.txt" style={{ display: 'none' }}
+                  onChange={e => setCvFile(e.target.files[0])} />
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>{cvFile ? '✅' : '📄'}</div>
                 <div style={{ color: cvFile ? '#34d399' : '#6b7280', fontSize: '13px' }}>
-                  {cvFile ? cvFile.name : 'Arrastra tu CV aquí o haz clic para seleccionarlo'}
+                  {cvFile ? cvFile.name : 'Arrastra tu CV o haz clic'}
                 </div>
-                <div style={{ color: '#4b5563', fontSize: '11px', marginTop: '4px' }}>
-                  PDF, DOCX, TXT · Máx. 10MB
-                </div>
+                <div style={{ color: '#4b5563', fontSize: '11px', marginTop: '4px' }}>PDF, DOCX, TXT · Max. 10MB</div>
               </div>
             )}
 
-            {/* Área de texto */}
             {cvInputMode === 'text' && (
-              <textarea
-                value={cvText}
-                onChange={e => setCvText(e.target.value)}
-                placeholder="Pega aquí el texto completo de tu currículum..."
-                rows={8}
-                style={{ ...inputStyle, resize: 'vertical', lineHeight: '1.5' }}
-              />
+              <textarea value={cvText} onChange={e => setCvText(e.target.value)}
+                placeholder="Pega el texto completo de tu curriculum..." rows={8}
+                style={{ ...inputStyle, resize: 'vertical', lineHeight: '1.5' }} />
             )}
 
-            {/* Resultados extraídos */}
             {extractedProfile && (
               <div style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '12px', padding: '16px' }}>
                 <div style={{ color: '#34d399', fontWeight: '600', fontSize: '13px', marginBottom: '12px' }}>
-                  ✅ Datos extraídos — Verifica y corrige:
+                  ✅ Datos extraidos — Verifica y corrige:
                 </div>
                 {['name', 'email', 'phone', 'location', 'linkedin', 'github', 'website'].map(field => (
                   <div key={field} style={{ marginBottom: '8px' }}>
-                    <label style={{ color: '#9ca3af', fontSize: '11px', display: 'block', marginBottom: '3px', textTransform: 'capitalize' }}>
-                      {field}
-                    </label>
-                    <input
-                      style={inputStyle}
-                      value={extractedProfile[field] || ''}
-                      onChange={e => setExtractedProfile({ ...extractedProfile, [field]: e.target.value })}
-                      placeholder={field}
-                    />
+                    <label style={{ color: '#9ca3af', fontSize: '11px', display: 'block', marginBottom: '3px', textTransform: 'capitalize' }}>{field}</label>
+                    <input style={inputStyle} value={extractedProfile[field] || ''}
+                      onChange={e => setExtractedProfile({ ...extractedProfile, [field]: e.target.value })} placeholder={field} />
                   </div>
                 ))}
                 <div style={{ marginBottom: '8px' }}>
                   <label style={{ color: '#9ca3af', fontSize: '11px', display: 'block', marginBottom: '3px' }}>Resumen Profesional</label>
-                  <textarea
-                    rows={3}
-                    style={{ ...inputStyle, resize: 'vertical' }}
+                  <textarea rows={3} style={{ ...inputStyle, resize: 'vertical' }}
                     value={extractedProfile.experienceSummary || ''}
-                    onChange={e => setExtractedProfile({ ...extractedProfile, experienceSummary: e.target.value })}
-                  />
+                    onChange={e => setExtractedProfile({ ...extractedProfile, experienceSummary: e.target.value })} />
                 </div>
-                {selectedMode === 'freelance' && (
-                  <>
-                    <div style={{ marginBottom: '8px' }}>
-                      <label style={{ color: '#9ca3af', fontSize: '11px', display: 'block', marginBottom: '3px' }}>Tarifa/Hora (USD)</label>
-                      <input style={inputStyle} value={extractedProfile.hourlyRate || ''} onChange={e => setExtractedProfile({ ...extractedProfile, hourlyRate: e.target.value })} />
-                    </div>
-                    <div style={{ marginBottom: '8px' }}>
-                      <label style={{ color: '#9ca3af', fontSize: '11px', display: 'block', marginBottom: '3px' }}>Overview Freelance</label>
-                      <textarea rows={3} style={{ ...inputStyle, resize: 'vertical' }} value={extractedProfile.freelanceOverview || ''} onChange={e => setExtractedProfile({ ...extractedProfile, freelanceOverview: e.target.value })} />
-                    </div>
-                  </>
-                )}
               </div>
             )}
 
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button style={btnSecondary} onClick={() => setStep(1)}>← Atrás</button>
+              <button style={btnSecondary} onClick={() => setStep(1)}>← Atras</button>
               <button style={btnPrimary} onClick={handleExtractCv} disabled={loading}>
-                {loading ? '🤖 Analizando CV...' : extractedProfile ? '🔄 Re-analizar' : '🤖 Analizar con IA'}
+                {loading ? 'Analizando...' : extractedProfile ? 'Re-analizar' : 'Analizar CV con IA'}
               </button>
             </div>
             {extractedProfile && (
@@ -348,16 +368,129 @@ export default function OnboardingWizard({ token, onComplete }) {
           </div>
         )}
 
-        {/* ===== PASO 3: PROYECTO ===== */}
+        {/* ===== STEP 2: FREELANCE - Portfolio + Overview ===== */}
+        {step === 2 && selectedMode === 'freelance' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0, lineHeight: '1.6' }}>
+              Describe tu perfil profesional y tus habilidades. Agrega links de tu portafolio (GitHub, Behance, web personal, etc). La IA analizara todo.
+            </p>
+
+            {/* Overview */}
+            <div>
+              <label style={{ color: '#9ca3af', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Descripcion profesional *</label>
+              <textarea
+                value={freelanceOverview}
+                onChange={e => setFreelanceOverview(e.target.value)}
+                placeholder="Ej: Soy desarrollador full-stack con 5 anios de experiencia en React, Node.js y MongoDB. Especializado en e-commerce y dashboards administrativos..."
+                rows={5}
+                style={{ ...inputStyle, resize: 'vertical', lineHeight: '1.5' }}
+              />
+            </div>
+
+            {/* Hourly Rate */}
+            <div>
+              <label style={{ color: '#9ca3af', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Tarifa por hora (USD)</label>
+              <input
+                type="number"
+                value={hourlyRate}
+                onChange={e => setHourlyRate(e.target.value)}
+                style={{ ...inputStyle, width: '140px' }}
+                min="1"
+              />
+            </div>
+
+            {/* Portfolio Links */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <label style={{ color: '#9ca3af', fontSize: '12px' }}>Links de Portafolio</label>
+                <button
+                  onClick={addPortfolioLink}
+                  style={{
+                    background: 'rgba(99,102,241,0.15)', border: 'none', borderRadius: '6px',
+                    color: '#a5b4fc', fontSize: '11px', cursor: 'pointer', padding: '4px 10px',
+                  }}
+                >
+                  + Agregar link
+                </button>
+              </div>
+              {portfolioLinks.map((link, i) => (
+                <div key={i} style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
+                  <input
+                    value={link}
+                    onChange={e => updatePortfolioLink(i, e.target.value)}
+                    placeholder={`https://github.com/tuusuario o https://tuweb.com`}
+                    style={inputStyle}
+                  />
+                  {portfolioLinks.length > 1 && (
+                    <button
+                      onClick={() => removePortfolioLink(i)}
+                      style={{
+                        background: 'rgba(239,68,68,0.15)', border: 'none', borderRadius: '6px',
+                        color: '#f87171', fontSize: '14px', cursor: 'pointer', padding: '0 8px',
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Extracted profile */}
+            {extractedProfile && (
+              <div style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '12px', padding: '16px' }}>
+                <div style={{ color: '#34d399', fontWeight: '600', fontSize: '13px', marginBottom: '12px' }}>
+                  ✅ Datos extraidos — Verifica y corrige:
+                </div>
+                {['name', 'email', 'location', 'linkedin', 'github', 'website'].map(field => (
+                  <div key={field} style={{ marginBottom: '8px' }}>
+                    <label style={{ color: '#9ca3af', fontSize: '11px', display: 'block', marginBottom: '3px', textTransform: 'capitalize' }}>{field}</label>
+                    <input style={inputStyle} value={extractedProfile[field] || ''}
+                      onChange={e => setExtractedProfile({ ...extractedProfile, [field]: e.target.value })} placeholder={field} />
+                  </div>
+                ))}
+                <div style={{ marginBottom: '8px' }}>
+                  <label style={{ color: '#9ca3af', fontSize: '11px', display: 'block', marginBottom: '3px' }}>Overview Freelance</label>
+                  <textarea rows={3} style={{ ...inputStyle, resize: 'vertical' }}
+                    value={extractedProfile.freelanceOverview || freelanceOverview}
+                    onChange={e => setExtractedProfile({ ...extractedProfile, freelanceOverview: e.target.value })} />
+                </div>
+                <div style={{ marginBottom: '8px' }}>
+                  <label style={{ color: '#9ca3af', fontSize: '11px', display: 'block', marginBottom: '3px' }}>Tarifa/Hora (USD)</label>
+                  <input style={{ ...inputStyle, width: '140px' }}
+                    value={extractedProfile.hourlyRate || hourlyRate}
+                    onChange={e => setExtractedProfile({ ...extractedProfile, hourlyRate: e.target.value })} />
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button style={btnSecondary} onClick={() => setStep(1)}>← Atras</button>
+              <button style={btnPrimary} onClick={handleExtractFreelance} disabled={loading}>
+                {loading ? 'Analizando...' : extractedProfile ? 'Re-analizar' : 'Analizar con IA'}
+              </button>
+            </div>
+            {extractedProfile && (
+              <button style={{ ...btnPrimary, background: 'linear-gradient(135deg, #10b981, #059669)' }} onClick={() => setStep(3)}>
+                Guardar y Continuar →
+              </button>
+            )}
+            <button style={{ ...btnSecondary, fontSize: '12px' }} onClick={() => setStep(3)}>
+              Omitir por ahora →
+            </button>
+          </div>
+        )}
+
+        {/* ===== STEP 3: PROJECT ===== */}
         {step === 3 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0, lineHeight: '1.6' }}>
-              Describe un proyecto que hayas realizado en lenguaje natural. La IA lo estructurará para tu portafolio.
+              Describe un proyecto que hayas realizado. La IA lo estructurara para tu portafolio.
             </p>
             <textarea
               value={projectText}
               onChange={e => setProjectText(e.target.value)}
-              placeholder={'Ejemplo: "Desarrollé un e-commerce completo para una tienda de ropa usando React en el frontend y Node.js con MongoDB en el backend. Implementé pasarela de pagos con Stripe y panel admin..."'}
+              placeholder='Ej: "Desarrolle un e-commerce completo para una tienda de ropa usando React y Node.js con MongoDB..."'
               rows={6}
               style={{ ...inputStyle, resize: 'vertical', lineHeight: '1.5' }}
             />
@@ -368,20 +501,18 @@ export default function OnboardingWizard({ token, onComplete }) {
                   ✅ Proyecto generado — Verifica:
                 </div>
                 <div style={{ marginBottom: '8px' }}>
-                  <label style={{ color: '#9ca3af', fontSize: '11px', display: 'block', marginBottom: '3px' }}>Título</label>
+                  <label style={{ color: '#9ca3af', fontSize: '11px', display: 'block', marginBottom: '3px' }}>Titulo</label>
                   <input style={inputStyle} value={extractedProject.title || ''} onChange={e => setExtractedProject({ ...extractedProject, title: e.target.value })} />
                 </div>
                 <div style={{ marginBottom: '8px' }}>
-                  <label style={{ color: '#9ca3af', fontSize: '11px', display: 'block', marginBottom: '3px' }}>Descripción</label>
+                  <label style={{ color: '#9ca3af', fontSize: '11px', display: 'block', marginBottom: '3px' }}>Descripcion</label>
                   <textarea rows={3} style={{ ...inputStyle, resize: 'vertical' }} value={extractedProject.description || ''} onChange={e => setExtractedProject({ ...extractedProject, description: e.target.value })} />
                 </div>
                 <div style={{ marginBottom: '8px' }}>
-                  <label style={{ color: '#9ca3af', fontSize: '11px', display: 'block', marginBottom: '3px' }}>Tecnologías (separadas por coma)</label>
-                  <input
-                    style={inputStyle}
+                  <label style={{ color: '#9ca3af', fontSize: '11px', display: 'block', marginBottom: '3px' }}>Tecnologias (separadas por coma)</label>
+                  <input style={inputStyle}
                     value={Array.isArray(extractedProject.technologies) ? extractedProject.technologies.join(', ') : ''}
-                    onChange={e => setExtractedProject({ ...extractedProject, technologies: e.target.value.split(',').map(t => t.trim()) })}
-                  />
+                    onChange={e => setExtractedProject({ ...extractedProject, technologies: e.target.value.split(',').map(t => t.trim()) })} />
                 </div>
                 <div>
                   <label style={{ color: '#9ca3af', fontSize: '11px', display: 'block', marginBottom: '3px' }}>URL del Proyecto</label>
@@ -391,9 +522,9 @@ export default function OnboardingWizard({ token, onComplete }) {
             )}
 
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button style={btnSecondary} onClick={() => setStep(2)}>← Atrás</button>
+              <button style={btnSecondary} onClick={() => setStep(2)}>← Atras</button>
               <button style={btnPrimary} onClick={handleExtractProject} disabled={loading}>
-                {loading ? '🤖 Generando...' : extractedProject ? '🔄 Regenerar' : '🤖 Generar con IA'}
+                {loading ? 'Generando...' : extractedProject ? 'Regenerar' : 'Generar con IA'}
               </button>
             </div>
 
