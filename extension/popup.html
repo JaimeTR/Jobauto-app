@@ -374,7 +374,12 @@
       <input type="email" id="login-email" placeholder="correo@ejemplo.com" autocomplete="email" />
       <div style="position: relative;">
         <input type="password" id="login-password" placeholder="Contraseña" autocomplete="current-password" style="width: 100%; box-sizing: border-box; padding-right: 36px;" />
-        <button id="btn-toggle-password" type="button" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #6b7280; cursor: pointer; font-size: 14px; padding: 2px 4px; line-height: 1;">👁️</button>
+        <button id="btn-toggle-password" type="button" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #6b7280; cursor: pointer; padding: 4px; line-height: 1; display: flex; align-items: center;">
+          <svg id="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
       </div>
       <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #6b7280; cursor: pointer; margin: 2px 0;">
         <input type="checkbox" id="login-remember" style="accent-color: #6366f1; width: 14px; height: 14px;" />

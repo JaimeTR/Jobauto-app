@@ -101,9 +101,14 @@ function bindButtons() {
   document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
   document.getElementById('btn-toggle-password').addEventListener('click', () => {
     const pw = document.getElementById('login-password');
-    const btn = document.getElementById('btn-toggle-password');
-    if (pw.type === 'password') { pw.type = 'text'; btn.textContent = '🙈'; }
-    else { pw.type = 'password'; btn.textContent = '👁️'; }
+    const icon = document.getElementById('eye-icon');
+    if (pw.type === 'password') {
+      pw.type = 'text';
+      icon.innerHTML = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`;
+    } else {
+      pw.type = 'password';
+      icon.innerHTML = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+    }
   });
   document.getElementById('btn-open-web').addEventListener('click', () => {
     chrome.storage.local.get(['apiUrl'], s => chrome.tabs.create({ url: s.apiUrl || 'http://localhost:3000' }));
