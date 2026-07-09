@@ -319,7 +319,7 @@ export default function App() {
   });
   const [settings, setSettings] = useState({
     provider: 'gemini', geminiApiKey: '', groqApiKey: '', ollamaModel: 'llama3', ollamaUrl: 'http://localhost:11434',
-    defaultEmailTemplate: '', emailSignature: '', rssFeeds: [], monthlyTarget: '3000', alertKeywords: ''
+    defaultEmailTemplate: '', emailSignature: '', rssFeeds: [], monthlyTarget: '3000', alertKeywords: '', calendarLink: ''
   });
   const [applications, setApplications] = useState([]);
   const [interviews, setInterviews] = useState([]);
@@ -1447,30 +1447,18 @@ export default function App() {
             <Briefcase size={18} />
             <span>{mode === 'job' ? 'Tablero Trabajos' : mode === 'business' ? 'Tablero Prospeccion' : 'Tablero Proyectos'}</span>
           </button>
-          <button 
-            className={`nav-item ${activeTab === 'alerts' ? 'active' : ''}`} 
-            onClick={() => {
-              setActiveTab('alerts');
-              handleMarkAlertsRead();
-            }}
-            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Bell size={18} />
-              <span>Alertas de Feeds</span>
-            </div>
-            {unreadAlertsCount > 0 && (
-              <span className="badge badge-warning" style={{ padding: '2px 6px', fontSize: '10px' }}>{unreadAlertsCount}</span>
-            )}
+          <button className={`nav-item ${activeTab === 'resources' ? 'active' : ''}`} onClick={() => setActiveTab('resources')}>
+            <FolderGit size={18} />
+            <span>Recursos</span>
           </button>
           <button className={`nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
             <User size={18} />
-            <span>Mi Perfil CV</span>
+            <span>Perfil</span>
           </button>
           {mode === 'freelance' && (
             <button className={`nav-item ${activeTab === 'portfolio' ? 'active' : ''}`} onClick={() => setActiveTab('portfolio')}>
-              <FolderGit size={18} />
-              <span>Mi Portafolio</span>
+              <Briefcase size={18} />
+              <span>Portafolio</span>
             </button>
           )}
           <button className={`nav-item ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => setActiveTab('calendar')}>
@@ -1505,16 +1493,19 @@ export default function App() {
           <div className="header-title">
             <h2>{
               activeTab === 'board' ? (mode === 'business' ? 'Tablero de Prospeccion' : `Tablero de ${mode === 'job' ? 'Postulaciones' : 'Proyectos'}`) :
-              activeTab === 'alerts' ? 'Alertas de Proyectos RSS' :
-              activeTab === 'profile' ? 'Mi Perfil & Currículum' :
+              activeTab === 'resources' ? 'Recursos y Plantillas' :
+              activeTab === 'profile' ? 'Mi Perfil' :
               activeTab === 'portfolio' ? 'Portafolio de Proyectos' :
-              activeTab === 'calendar' ? 'Calendario de Eventos' : 'Ajustes del Sistema'
+              activeTab === 'calendar' ? 'Calendario' : 'Ajustes del Sistema'
             }</h2>
             <p>
               {activeTab === 'board' && mode === 'business' ? 'Gestiona clientes potenciales encontrados en Google Maps' :
-               activeTab === 'board' ? 'Organiza, adapta tus propuestas con IA y da seguimiento' : 
-               activeTab === 'alerts' ? 'Proyectos detectados en segundo plano con compatibilidad >50%' :
-               'Administra tus datos para potenciar las respuestas de la IA'}
+               activeTab === 'board' ? 'Organiza, adapta tus propuestas con IA y da seguimiento' :
+               activeTab === 'resources' ? 'Plantillas de correo, propuestas, documentos y recursos para contactar clientes' :
+               activeTab === 'profile' ? 'Configura tu perfil profesional y datos de empresa' :
+               activeTab === 'portfolio' ? 'Gestiona tus proyectos anteriores para que la IA los use como referencia' :
+               activeTab === 'calendar' ? 'Gestiona tus reuniones y sincroniza con Google Calendar' :
+               'Configura la IA, conexiones y preferencias del sistema'}
             </p>
           </div>
           {activeTab === 'board' && (
@@ -1704,58 +1695,71 @@ export default function App() {
           </section>
         )}
 
-        {/* Section: Alerts */}
-        {activeTab === 'alerts' && (
+        {/* Section: Recursos y Plantillas */}
+        {activeTab === 'resources' && (
           <section className="content-section active">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {alerts.length === 0 ? (
-                <div className="card" style={{ maxWidth: 'none', textAlign: 'center', padding: '40px' }}>
-                  <Bell size={40} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
-                  <p style={{ color: 'var(--text-muted)' }}>No tienes nuevas alertas todavía. Agrega Feeds RSS en Ajustes para iniciar el monitoreo automático.</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+              
+              {/* Email Templates */}
+              <div className="card" style={{ padding: '20px' }}>
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>📧</div>
+                <h4 style={{ margin: '0 0 6px 0' }}>Plantillas de Correo</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: '0 0 12px 0' }}>
+                  Guarda y reutiliza plantillas de correo para propuestas, seguimientos y presentacion.
+                </p>
+                <div style={{ background: 'var(--bg-tertiary)', borderRadius: '6px', padding: '8px 12px', fontSize: '11px', color: '#6b7280' }}>
+                  Proximamente: editor de plantillas con variables como [Nombre], [Empresa], [Proyecto]
                 </div>
-              ) : (
-                alerts.map(alert => {
-                  let compScoreClass = 'compatibility-low';
-                  if (alert.compatibilityScore >= 80) compScoreClass = 'compatibility-high';
-                  else if (alert.compatibilityScore >= 50) compScoreClass = 'compatibility-medium';
+              </div>
 
-                  return (
-                    <div key={alert.id} className="card" style={{ maxWidth: 'none', padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px', borderLeft: alert.read ? '1px solid var(--border-color)' : '4px solid var(--accent-primary)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <h4 style={{ fontSize: '16px', fontFamily: 'var(--font-display)', color: 'white' }}>{alert.title}</h4>
-                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{alert.company}</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <span className={`compatibility-pill ${compScoreClass}`} style={{ fontSize: '12px', padding: '4px 10px' }}>{alert.compatibilityScore}% compatibilidad</span>
-                          <button className="btn btn-small btn-primary" onClick={() => handleImportAlertToBoard(alert)}>Interesado</button>
-                          <button className="btn btn-small btn-secondary btn-icon" onClick={() => handleDeleteAlert(alert.id)}>
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      </div>
-                      <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.4', whiteSpace: 'pre-wrap', maxHeight: '100px', overflowY: 'auto' }}>{alert.description}</p>
-                      
-                      {alert.compatibilityRationale && (
-                        <div style={{ fontSize: '12.5px', color: 'var(--text-main)', backgroundColor: 'var(--bg-tertiary)', padding: '10px', borderRadius: '6px' }}>
-                          <strong>Resumen compatibilidad:</strong> {alert.compatibilityRationale}
-                        </div>
-                      )}
+              {/* Propuestas guardadas */}
+              <div className="card" style={{ padding: '20px' }}>
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>📄</div>
+                <h4 style={{ margin: '0 0 6px 0' }}>Propuestas Guardadas</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: '0 0 12px 0' }}>
+                  Historial de propuestas enviadas con IA. Revisa y reutiliza las que funcionaron.
+                </p>
+                <div style={{ background: 'var(--bg-tertiary)', borderRadius: '6px', padding: '8px 12px', fontSize: '11px', color: '#6b7280' }}>
+                  Las propuestas generadas con IA se guardan automaticamente en cada proyecto.
+                </div>
+              </div>
 
-                      {alert.clientRedFlags && alert.clientRedFlags.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--color-rejected)', fontWeight: 'bold' }}>
-                            <AlertTriangle size={14} /> Riesgos:
-                          </span>
-                          {alert.clientRedFlags.map((flag, idx) => (
-                            <span key={idx} className="badge badge-danger" style={{ fontSize: '11px' }}>{flag}</span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
+              {/* Documentos */}
+              <div className="card" style={{ padding: '20px' }}>
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>📁</div>
+                <h4 style={{ margin: '0 0 6px 0' }}>Documentos</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: '0 0 12px 0' }}>
+                  CVs, portafolios PDF, brochures y documentos para compartir con clientes.
+                </p>
+                <div style={{ background: 'var(--bg-tertiary)', borderRadius: '6px', padding: '8px 12px', fontSize: '11px', color: '#6b7280' }}>
+                  Proximamente: subida de archivos PDF, DOCX, imagenes.
+                </div>
+              </div>
+
+              {/* Videos / Presentaciones */}
+              <div className="card" style={{ padding: '20px' }}>
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>🎥</div>
+                <h4 style={{ margin: '0 0 6px 0' }}>Presentaciones y Videos</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: '0 0 12px 0' }}>
+                  Links de Loom, YouTube, Google Slides para compartir en tus propuestas.
+                </p>
+                <div style={{ background: 'var(--bg-tertiary)', borderRadius: '6px', padding: '8px 12px', fontSize: '11px', color: '#6b7280' }}>
+                  Agrega URLs de videos demostrativos o presentaciones de servicios.
+                </div>
+              </div>
+
+              {/* Enlaces utiles */}
+              <div className="card" style={{ padding: '20px' }}>
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>🔗</div>
+                <h4 style={{ margin: '0 0 6px 0' }}>Enlaces Rapidos</h4>
+                <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: '0 0 12px 0' }}>
+                  Calendly, WhatsApp Business, Google Drive y otras herramientas que usas a diario.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <input placeholder="+ Agregar enlace..." style={{ background: '#121829', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '6px 10px', color: 'white', fontSize: '11px' }} />
+                </div>
+              </div>
+
             </div>
           </section>
         )}
@@ -1965,8 +1969,35 @@ export default function App() {
         {/* Section: Calendar */}
         {activeTab === 'calendar' && (
           <section className="content-section active">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px' }}>Mis Próximas Reuniones y Entrevistas</h3>
+            {/* Google Calendar integration card */}
+            <div className="card" style={{ maxWidth: 'none', padding: '20px', marginBottom: '20px', background: 'rgba(66,133,244,0.08)', border: '1px solid rgba(66,133,244,0.2)' }}>
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                <div style={{ fontSize: '32px' }}>📅</div>
+                <div style={{ flex: 1 }}>
+                  <h4 style={{ margin: '0 0 4px 0', color: '#4285f4' }}>Google Calendar</h4>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: '0 0 8px 0' }}>
+                    Conecta tu Google Calendar para ver tus eventos y permitir que clientes agenden reuniones segun tu disponibilidad.
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <a href="https://calendar.google.com" target="_blank" rel="noreferrer"
+                      style={{ background: '#4285f4', color: 'white', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', textDecoration: 'none', fontWeight: 600 }}>
+                      Abrir Google Calendar
+                    </a>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#6b7280' }}>
+                      <input placeholder="Link de Calendly o Google Calendar..." style={{ background: '#121829', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '6px 10px', color: 'white', fontSize: '11px', width: '240px' }}
+                        value={settings.calendarLink || ''}
+                        onChange={e => setSettings({...settings, calendarLink: e.target.value})} />
+                    </span>
+                  </div>
+                  <p style={{ color: '#6b7280', fontSize: '10px', marginTop: '6px' }}>
+                    Comparti este link con clientes para que agenden segun tu horario. Se sincroniza con tu calendario.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', margin: 0 }}>Reuniones Programadas</h3>
               <button className="btn btn-primary" onClick={() => {
                 setMeetingForm({ title: '', date: '', time: '', location: '', notes: '', applicationId: '', proposalId: '' });
                 setShowMeetingFormModal(true);
