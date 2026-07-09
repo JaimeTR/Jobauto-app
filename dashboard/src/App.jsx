@@ -34,6 +34,18 @@ import OnboardingWizard from './OnboardingWizard.jsx';
 
 const API_BASE = '/api';
 
+function safeStr(val, fallback = '') {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object') {
+    if (val.price) return String(val.price);
+    if (val.text) return String(val.text);
+    if (val.value) return String(val.value);
+    return JSON.stringify(val);
+  }
+  return String(val);
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // CvImportPanel – mini panel inside Profile tab to import/update from CV
 // ────────────────────────────────────────────────────────────────────────────
@@ -1465,14 +1477,19 @@ export default function App() {
                       <span className="badge">{colApps.length}</span>
                     </div>
                     <div className="column-cards">
-                      {colApps.map(app => {
-                        const appInterview = interviews.find(i => 
-                          (mode === 'job' ? i.applicationId === app.id : i.proposalId === app.id)
-                        );
+      {colApps.map(app => {
+        const appInterview = interviews.find(i => 
+          (mode === 'job' ? i.applicationId === app.id : i.proposalId === app.id)
+        );
 
-                        const inactiveAlert = isProposalInactive(app);
-                        const descSnippet = (app.description || '').substring(0, 120);
-                        const compScoreClass = (app.compatibilityScore || 0) >= 70 ? 'compatibility-high' : ((app.compatibilityScore || 0) >= 40 ? 'compatibility-medium' : 'compatibility-low');
+        const inactiveAlert = isProposalInactive(app);
+        const descSnippet = safeStr(app.description, '').substring(0, 120);
+        const compScoreClass = (app.compatibilityScore || 0) >= 70 ? 'compatibility-high' : ((app.compatibilityScore || 0) >= 40 ? 'compatibility-medium' : 'compatibility-low');
+        const budgetStr = safeStr(app.budget, '');
+        const platformStr = safeStr(app.platform, '');
+        const titleStr = safeStr(app.title, '');
+        const companyStr = safeStr(app.company, '');
+        const urlStr = safeStr(app.url, '');
 
                         return (
                           <div 
@@ -1489,9 +1506,9 @@ export default function App() {
                             style={{ borderLeft: inactiveAlert ? '3px solid var(--color-interviewing)' : '1px solid var(--border-color)' }}
                           >
                             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '6px' }}>
-                              <h4 style={{ flex: 1, margin: 0 }}>{app.title}</h4>
-                              {app.url && (
-                                <a href={app.url} target="_blank" rel="noreferrer"
+                              <h4 style={{ flex: 1, margin: 0 }}>{titleStr}</h4>
+                              {urlStr && (
+                                <a href={urlStr} target="_blank" rel="noreferrer"
                                   onClick={e => e.stopPropagation()}
                                   title="Abrir publicacion original"
                                   style={{ color: 'var(--accent-color)', flexShrink: 0, marginTop: '1px' }}>
@@ -1499,21 +1516,21 @@ export default function App() {
                                 </a>
                               )}
                             </div>
-                            <div className="company">{app.company}</div>
+                            <div className="company">{companyStr}</div>
 
-                            {(app.platform || app.budget) && (
+                            {(platformStr || budgetStr) && (
                               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                {app.platform && (
+                                {platformStr && (
                                   <span style={{
                                     fontSize: '10px', background: 'rgba(99,102,241,0.15)', color: '#a5b4fc',
                                     padding: '2px 6px', borderRadius: '4px', fontWeight: 600,
                                   }}>
-                                    {app.platform}
+                                    {platformStr}
                                   </span>
                                 )}
-                                {app.budget && (
+                                {budgetStr && (
                                   <span style={{ fontSize: '11px', color: '#34d399', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                                    <DollarSign size={10} /> {app.budget}
+                                    <DollarSign size={10} /> {budgetStr}
                                   </span>
                                 )}
                               </div>
