@@ -340,7 +340,7 @@ async function extractTextFromBuffer(buffer, mimetype, originalname) {
 async function extractCvDataWithAI(text, apiKey) {
   const { GoogleGenerativeAI } = await import('@google/generative-ai');
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
   const prompt = `Analiza el siguiente currículum vitae y extrae los datos estructurados. Responde SOLO con un objeto JSON válido sin markdown ni código envolvente.
 
@@ -420,7 +420,7 @@ app.post('/api/portfolio/extract-project', authenticateToken, async (req, res) =
 
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     const prompt = `Con base en la siguiente descripción de un proyecto profesional, genera un objeto JSON estructurado para un portafolio. Responde SOLO con el JSON, sin markdown.
 

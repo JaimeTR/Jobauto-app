@@ -41,7 +41,7 @@ function parseRssXml(xmlText) {
 
 // Call AI Model to quickly score a project from RSS
 async function evaluateProjectFit(profile, projectTitle, projectDesc, settings) {
-  const provider = settings.provider || 'gemini';
+  const provider = settings.provider || 'groq';
   
   const prompt = `
 Realiza una evaluación rápida de compatibilidad entre un perfil profesional y una oferta de proyecto freelance.
@@ -68,7 +68,7 @@ Responde ÚNICAMENTE con el objeto JSON, sin texto adicional fuera del JSON.
       
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ 
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.0-flash',
         generationConfig: { responseMimeType: "application/json" }
       });
       const result = await model.generateContent(prompt);

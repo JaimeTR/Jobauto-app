@@ -156,7 +156,7 @@ export const jsonAdapter = {
     // Default settings
     const defaultSettings = {
       userId,
-      provider: 'gemini', 
+      provider: 'groq', 
       geminiApiKey: '',
       groqApiKey: '',
       ollamaModel: 'llama3',

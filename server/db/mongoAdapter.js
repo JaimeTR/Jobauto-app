@@ -118,7 +118,7 @@ export const mongoAdapter = {
     // Seed defaults
     const defaultSettings = {
       userId,
-      provider: 'gemini', 
+      provider: 'groq', 
       geminiApiKey: '',
       groqApiKey: '',
       ollamaModel: 'llama3',

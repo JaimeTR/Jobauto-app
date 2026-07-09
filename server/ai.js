@@ -19,7 +19,7 @@ function extractJson(text) {
 
 async function callLLM(userId, prompt, isJson = true) {
   const settings = await getSettings(userId);
-  const provider = settings.provider || 'gemini';
+  const provider = settings.provider || 'groq';
 
   if (provider === 'gemini') {
     const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY;
@@ -27,7 +27,7 @@ async function callLLM(userId, prompt, isJson = true) {
     
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.0-flash',
       generationConfig: isJson ? { responseMimeType: "application/json" } : {}
     });
     
