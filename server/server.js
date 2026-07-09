@@ -130,6 +130,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'online' });
 });
 
+// Verificar token (para extension)
+app.get('/api/auth/me', authenticateToken, async (req, res) => {
+  res.json({ userId: req.userId, email: req.userEmail });
+});
+
 // Registro de Usuario (Paso 1: Generación de OTP)
 app.post('/api/auth/register', async (req, res) => {
   try {

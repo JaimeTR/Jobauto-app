@@ -38,7 +38,7 @@ export function verifyPassword(password, hash, salt) {
 
 export function generateToken(payload) {
   const header = { alg: 'HS256', typ: 'JWT' };
-  const exp = Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60);
+  const exp = Math.floor(Date.now() / 1000) + (90 * 24 * 60 * 60);
   const tokenPayload = { ...payload, exp };
   const headerEncoded = base64url(JSON.stringify(header));
   const payloadEncoded = base64url(JSON.stringify(tokenPayload));

@@ -17,27 +17,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     versionEl.textContent = 'v' + manifest.version;
   }
 
-  chrome.storage.local.get(['token', 'email', 'apiUrl', 'mode', 'guideSeen', 'autopilotKeywords', 'autopilotPlatform'], (s) => {
+  chrome.storage.local.get(['token', 'email', 'apiUrl', 'mode', 'guideSeen', 'autopilotKeywords', 'autopilotPlatform'], async (s) => {
     const apiUrl = s.apiUrl || 'http://localhost:3000';
     document.getElementById('api-url-input').value = apiUrl;
     checkServerStatus(apiUrl);
 
-    if (s.autopilotKeywords) {
-      document.getElementById('autopilot-keywords').value = s.autopilotKeywords;
-    }
-    if (s.autopilotPlatform) {
-      document.getElementById('autopilot-platform').value = s.autopilotPlatform;
-    }
+    if (s.autopilotKeywords) document.getElementById('autopilot-keywords').value = s.autopilotKeywords;
+    if (s.autopilotPlatform) document.getElementById('autopilot-platform').value = s.autopilotPlatform;
 
     if (s.token && s.email) {
-      // Already authenticated
-      updateAutopilotUI(s.mode || 'freelance');
-      if (!s.guideSeen) {
-        showView('guide');
-        animateGuideSteps();
+      // Validate token with server
+      const valid = await validateToken(apiUrl, s.token);
+      if (valid) {
+        updateAutopilotUI(s.mode || 'freelance');
+        if (!s.guideSeen) {
+          showView('guide');
+          animateGuideSteps();
+        } else {
+          showView('main');
+          populateMain(s.email, s.mode || 'freelance');
+        }
       } else {
-        showView('main');
-        populateMain(s.email, s.mode || 'freelance');
+        // Token expired/invalid, clear and show login
+        chrome.storage.local.remove(['token', 'email']);
+        showView('login');
       }
     } else {
       showView('login');
@@ -312,6 +315,23 @@ function updateModeUI(mode) {
 }
 
 // ─── Server ───────────────────────────────────────────────────────────────────
+async function validateToken(apiUrl, token) {
+  try {
+    const res = await fetch(`${apiUrl}/api/auth/me`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+      signal: AbortSignal.timeout(5000)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.email) chrome.storage.local.set({ email: data.email });
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 async function checkServerStatus(apiUrl) {
   const dot   = document.getElementById('status-dot');
   const label = document.getElementById('status-label');
