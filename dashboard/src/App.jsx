@@ -706,17 +706,16 @@ export default function App() {
   };
 
   const loadBoardData = async () => {
-    if (mode === 'business') {
-      try {
-        const res = await authFetch(`${API_BASE}/freelance/proposals`);
-        if (res.ok) setApplications(await res.json());
-      } catch (e) {}
-      return;
-    }
     try {
       const endpoint = mode === 'job' ? `${API_BASE}/applications` : `${API_BASE}/freelance/proposals`;
       const res = await authFetch(endpoint);
-      if (res.ok) setApplications(await res.json());
+      if (res.ok) {
+        let data = await res.json();
+        // Filtrar por modo: business = solo leads, freelance/job = solo propuestas/aplicaciones
+        if (mode === 'business') data = data.filter(d => d.source === 'google_maps' || d.platform === 'Google Maps');
+        else data = data.filter(d => !d.source || d.source !== 'google_maps');
+        setApplications(data);
+      }
     } catch (e) {}
   };
 
@@ -1526,8 +1525,8 @@ export default function App() {
         {activeTab === 'board' && (
           <section className="content-section active">
             
-            {/* Earnings monthly tracker - only for freelance */}
-            {mode === 'freelance' && (
+            {/* Earnings tracker - freelance y empresa */}
+            {(mode === 'freelance' || mode === 'business') && (
               <div className="card" style={{ maxWidth: 'none', padding: '16px 24px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px' }}>
                   <span style={{ fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}><TrendingUp size={16} style={{ color: 'var(--color-offer)' }} /> Meta Financiera Mensual:</span>
