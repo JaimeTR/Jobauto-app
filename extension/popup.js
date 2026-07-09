@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (s.token && s.email) {
       // Already authenticated
+      updateAutopilotUI(s.mode || 'freelance');
       if (!s.guideSeen) {
         showView('guide');
         animateGuideSteps();
@@ -137,14 +138,22 @@ function bindButtons() {
   });
   document.getElementById('btn-show-guide-again').addEventListener('click', () => showView('guide'));
   document.getElementById('btn-save-url').addEventListener('click', saveApiUrl);
-  document.getElementById('btn-start-autopilot').addEventListener('click', startAutopilot);
+  document.getElementById('btn-start-autopilot-business')?.addEventListener('click', startAutopilot);
+  document.getElementById('btn-start-autopilot-freelance')?.addEventListener('click', startAutopilot);
+  document.getElementById('btn-start-autopilot-job')?.addEventListener('click', startAutopilot);
   document.getElementById('btn-stop-autopilot').addEventListener('click', stopAutopilot);
-  const thresholdSlider = document.getElementById('autopilot-threshold');
-  if (thresholdSlider) {
-    thresholdSlider.addEventListener('input', () => {
-      document.getElementById('lbl-threshold').textContent = thresholdSlider.value + '%';
+
+  // Threshold sliders
+  ['ap-freelance-threshold', 'ap-job-threshold'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', () => {
+      const lbl = document.getElementById(id.replace('threshold', 'lbl'));
+      if (lbl) lbl.textContent = el.value + '%';
     });
-  }
+  });
+
+  // Update autopilot UI on initial load
+  chrome.storage.local.get(['mode'], (s) => updateAutopilotUI(s.mode || 'freelance'));
 }
 
 // ─── Auth flows ───────────────────────────────────────────────────────────────
@@ -275,11 +284,20 @@ function startResendTimer() {
 function setMode(mode) {
   chrome.storage.local.set({ mode }, () => {
     updateModeUI(mode);
+    updateAutopilotUI(mode);
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]?.id) chrome.tabs.sendMessage(tabs[0].id, { action: 'modeChanged', mode });
     });
     const names = { freelance: 'Freelance', business: 'Empresa', job: 'Trabajo' };
     showMainToast(`Modo cambiado a ${names[mode] || mode}`);
+  });
+}
+
+function updateAutopilotUI(mode) {
+  const sections = { business: 'ap-business', freelance: 'ap-freelance', job: 'ap-job' };
+  Object.entries(sections).forEach(([key, id]) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = key === mode ? 'flex' : 'none';
   });
 }
 
@@ -378,96 +396,75 @@ function checkAutopilotState() {
 }
 
 function startAutopilot() {
-  const keywords = document.getElementById('autopilot-keywords').value.trim();
-  const platform = document.getElementById('autopilot-platform').value;
-  const threshold = parseInt(document.getElementById('autopilot-threshold')?.value || '10', 10);
-
-  if (!keywords) {
-    showMainToast('Describe que buscas.', 'error');
-    return;
-  }
-
   chrome.storage.local.get(['mode'], (s) => {
     const mode = s.mode || 'freelance';
 
-    // Business mode: Google Maps search
+    // === EMPRESA: Google Maps ===
     if (mode === 'business') {
+      const category = document.getElementById('ap-business-category')?.value?.trim();
+      const location = document.getElementById('ap-business-location')?.value?.trim() || 'Lima';
+      if (!category) { showMainToast('Ingresa la categoria del negocio.', 'error'); return; }
+      const keywords = `${category} ${location}`;
       const searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(keywords)}`;
-      const ap = {
-        active: true,
-        keywords,
-        platform: 'googlemaps',
-        mode: 'business',
-        minScore: threshold,
-        maxPages: 3,
-        searchUrl,
-        status: 'Escaneando Google Maps...',
-        total: 0,
-        savedCount: 0,
-        timestamp: Date.now()
-      };
+      const ap = { active: true, keywords, platform: 'googlemaps', mode: 'business', minScore: 0, maxPages: 3, searchUrl, status: 'Escaneando Google Maps...', total: 0, savedCount: 0, timestamp: Date.now() };
       chrome.storage.local.set({ autopilot: ap, autopilotKeywords: keywords, autopilotPlatform: 'googlemaps' }, () => {
         checkAutopilotState();
-        showMainToast(`Buscando negocios: "${keywords}" en Google Maps...`);
+        showMainToast(`Buscando "${category}" en ${location}...`);
         chrome.tabs.create({ url: searchUrl });
       });
       return;
     }
 
-    // Search URLs with sorting (newest first where possible)
-    const searchUrls = {
-      upwork: `https://www.upwork.com/nx/search/jobs/?q=${encodeURIComponent(keywords)}&sort=recency`,
-      freelancer: `https://www.freelancer.com/jobs/${encodeURIComponent(keywords)}/?sort=submitdate`,
-      fiverr: `https://www.fiverr.com/search/gigs?query=${encodeURIComponent(keywords)}&sort=recency`,
-      workana: `https://www.workana.com/jobs?query=${encodeURIComponent(keywords)}&sort=recent`,
-      contra: `https://contra.com/search?query=${encodeURIComponent(keywords)}`,
-      peopleperhour: `https://www.peopleperhour.com/freelance-jobs?keywords=${encodeURIComponent(keywords)}`,
-      guru: `https://www.guru.com/d/jobs/skill/${encodeURIComponent(keywords.replace(/\s+/g, '-'))}/`,
-      toptal: `https://www.toptal.com/freelance-jobs?search=${encodeURIComponent(keywords)}`,
-      wellfound: `https://wellfound.com/jobs?search=${encodeURIComponent(keywords)}`,
-      remoteok: `https://remoteok.com/remote-${encodeURIComponent(keywords.replace(/\s+/g, '-'))}-jobs`,
-      weworkremotely: `https://weworkremotely.com/remote-jobs/search?term=${encodeURIComponent(keywords)}`,
-      arc: `https://arc.dev/remote-jobs?search=${encodeURIComponent(keywords)}`,
-      linkedin: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(keywords)}&sortBy=DD`,
-      indeed: `https://www.indeed.com/jobs?q=${encodeURIComponent(keywords)}&sort=date`,
-      computrabajo: `https://www.computrabajo.com/trabajo-de-${encodeURIComponent(keywords)}?ord=fecha`,
-      getonbrd: `https://www.getonbrd.com/trabajos?search=${encodeURIComponent(keywords)}`,
-      infojobs: `https://www.infojobs.net/jobsearch/search?keyword=${encodeURIComponent(keywords)}&sort=date`,
-      bumeran: `https://www.bumeran.com.pe/empleos-busqueda-${encodeURIComponent(keywords)}.html?orden=2`
-    };
-
-    const searchUrl = searchUrls[platform];
-    if (!searchUrl) {
-      showMainToast('Plataforma no soportada.', 'error');
+    // === FREELANCE ===
+    if (mode === 'freelance') {
+      const keywords = document.getElementById('ap-freelance-keywords')?.value?.trim();
+      const platform = document.getElementById('ap-freelance-platform')?.value;
+      const threshold = parseInt(document.getElementById('ap-freelance-threshold')?.value || '10', 10);
+      if (!keywords) { showMainToast('Ingresa palabras clave.', 'error'); return; }
+      startPlatformSearch(mode, keywords, platform, threshold, {
+        upwork: `https://www.upwork.com/nx/search/jobs/?q=${encodeURIComponent(keywords)}&sort=recency`,
+        freelancer: `https://www.freelancer.com/jobs/${encodeURIComponent(keywords)}/?sort=submitdate`,
+        fiverr: `https://www.fiverr.com/search/gigs?query=${encodeURIComponent(keywords)}&sort=recency`,
+        workana: `https://www.workana.com/jobs?query=${encodeURIComponent(keywords)}&sort=recent`,
+        contra: `https://contra.com/search?query=${encodeURIComponent(keywords)}`,
+        peopleperhour: `https://www.peopleperhour.com/freelance-jobs?keywords=${encodeURIComponent(keywords)}`,
+        guru: `https://www.guru.com/d/jobs/skill/${encodeURIComponent(keywords.replace(/\s+/g, '-'))}/`,
+        toptal: `https://www.toptal.com/freelance-jobs?search=${encodeURIComponent(keywords)}`
+      });
       return;
     }
 
-    const ap = {
-      active: true,
-      keywords,
-      platform,
-      mode,
-      minScore: threshold,
-      maxPages: 3,
-      searchUrl,
-      urls: [],
-      currentIdx: -1,
-      status: 'Escaneando pagina de resultados...',
-      total: 0,
-      savedCount: 0,
-      skippedCount: 0,
-      timestamp: Date.now()
-    };
+    // === TRABAJO ===
+    if (mode === 'job') {
+      const keywords = document.getElementById('ap-job-keywords')?.value?.trim();
+      const platform = document.getElementById('ap-job-platform')?.value;
+      const threshold = parseInt(document.getElementById('ap-job-threshold')?.value || '10', 10);
+      if (!keywords) { showMainToast('Ingresa palabras clave.', 'error'); return; }
+      startPlatformSearch(mode, keywords, platform, threshold, {
+        linkedin: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(keywords)}&sortBy=DD`,
+        indeed: `https://www.indeed.com/jobs?q=${encodeURIComponent(keywords)}&sort=date`,
+        computrabajo: `https://www.computrabajo.com/trabajo-de-${encodeURIComponent(keywords)}?ord=fecha`,
+        getonbrd: `https://www.getonbrd.com/trabajos?search=${encodeURIComponent(keywords)}`,
+        infojobs: `https://www.infojobs.net/jobsearch/search?keyword=${encodeURIComponent(keywords)}&sort=date`,
+        wellfound: `https://wellfound.com/jobs?search=${encodeURIComponent(keywords)}`,
+        remoteok: `https://remoteok.com/remote-${encodeURIComponent(keywords.replace(/\s+/g, '-'))}-jobs`,
+        weworkremotely: `https://weworkremotely.com/remote-jobs/search?term=${encodeURIComponent(keywords)}`,
+        arc: `https://arc.dev/remote-jobs?search=${encodeURIComponent(keywords)}`,
+        bumeran: `https://www.bumeran.com.pe/empleos-busqueda-${encodeURIComponent(keywords)}.html?orden=2`
+      });
+      return;
+    }
+  });
+}
 
-    chrome.storage.local.set({
-      autopilot: ap,
-      autopilotKeywords: keywords,
-      autopilotPlatform: platform
-    }, () => {
-      checkAutopilotState();
-      showMainToast(`Buscando "${keywords}" en ${platform}...`);
-      chrome.tabs.create({ url: searchUrl });
-    });
+function startPlatformSearch(mode, keywords, platform, threshold, searchUrls) {
+  const searchUrl = searchUrls[platform];
+  if (!searchUrl) { showMainToast('Plataforma no soportada.', 'error'); return; }
+  const ap = { active: true, keywords, platform, mode, minScore: threshold, maxPages: 3, searchUrl, status: 'Escaneando...', total: 0, savedCount: 0, skippedCount: 0, timestamp: Date.now() };
+  chrome.storage.local.set({ autopilot: ap, autopilotKeywords: keywords, autopilotPlatform: platform }, () => {
+    checkAutopilotState();
+    showMainToast(`Buscando "${keywords}"...`);
+    chrome.tabs.create({ url: searchUrl });
   });
 }
 

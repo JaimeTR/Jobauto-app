@@ -487,37 +487,70 @@
     <!-- Autopilot Section -->
     <div class="mode-section" style="border-bottom: 1px solid var(--border); padding-bottom: 16px;">
       <div class="mode-label">Auto-busqueda Inteligente</div>
-      <p style="font-size:10px; color:var(--muted); margin:2px 0 6px 0;">Usa ingles y espanol. Ej: WordPress elementor WooCommerce developer</p>
       
       <!-- Config State -->
       <div id="autopilot-config" style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
-        <input type="text" id="autopilot-keywords" placeholder="Ej: React, Node.js, Diseño UX..." style="font-size: 12px; padding: 8px 12px;" />
-        <div style="display: flex; gap: 6px;">
-          <select id="autopilot-platform" style="flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 9px; color: var(--text); font-size: 12px; padding: 8px 10px; outline: none; font-family: inherit;">
-            <option value="upwork">Upwork (Freelance)</option>
-            <option value="freelancer">Freelancer.com</option>
-            <option value="fiverr">Fiverr</option>
-            <option value="workana">Workana</option>
-            <option value="contra">Contra (sin costo)</option>
-            <option value="peopleperhour">PeoplePerHour</option>
-            <option value="guru">Guru.com</option>
-            <option value="toptal">Toptal (exclusivo)</option>
-            <option value="wellfound">Wellfound (startups)</option>
-            <option value="remoteok">Remote OK</option>
-            <option value="weworkremotely">We Work Remotely</option>
-            <option value="linkedin">LinkedIn (Empleo)</option>
-            <option value="indeed">Indeed</option>
-            <option value="computrabajo">Computrabajo</option>
-            <option value="getonbrd">GetOnBoard</option>
-            <option value="infojobs">InfoJobs</option>
-          </select>
-          <button class="btn-primary" id="btn-start-autopilot" style="flex: 1.2; padding: 8px; font-size: 12px; box-shadow: none;">Iniciar</button>
+
+        <!-- === EMPRESA: Google Maps === -->
+        <div id="ap-business" style="display:none; flex-direction:column; gap:8px;">
+          <p style="font-size:10px; color:var(--muted); margin:0;">Busca negocios sin web o con web antigua</p>
+          <input type="text" id="ap-business-category" placeholder="Categoria: dentista, restaurante, abogado..." style="font-size: 12px; padding: 8px 12px;" />
+          <input type="text" id="ap-business-location" placeholder="Zona: Miraflores Lima, San Isidro..." style="font-size: 12px; padding: 8px 12px;" />
+          <div style="display: flex; gap: 6px;">
+            <button class="btn-primary" id="btn-start-autopilot-business" style="flex:1; padding: 8px; font-size: 12px; box-shadow: none;">Iniciar busqueda en Google Maps</button>
+          </div>
         </div>
-        <div style="display:flex; align-items:center; gap:6px; font-size:10px; color:var(--muted);">
-          <span>Filtro minimo:</span>
-          <input type="range" id="autopilot-threshold" min="0" max="50" value="10" style="flex:1; accent-color:#6366f1;" />
-          <span id="lbl-threshold">10%</span>
+
+        <!-- === FREELANCE: Plataformas freelance === -->
+        <div id="ap-freelance" style="display:none; flex-direction:column; gap:8px;">
+          <p style="font-size:10px; color:var(--muted); margin:0;">Busca proyectos en plataformas freelance</p>
+          <input type="text" id="ap-freelance-keywords" placeholder="Ej: WordPress, React, PHP..." style="font-size: 12px; padding: 8px 12px;" />
+          <div style="display: flex; gap: 6px;">
+            <select id="ap-freelance-platform" style="flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 9px; color: var(--text); font-size: 12px; padding: 8px 10px; outline: none; font-family: inherit;">
+              <option value="upwork">Upwork</option>
+              <option value="freelancer">Freelancer.com</option>
+              <option value="fiverr">Fiverr</option>
+              <option value="workana">Workana</option>
+              <option value="contra">Contra (sin costo)</option>
+              <option value="peopleperhour">PeoplePerHour</option>
+              <option value="guru">Guru.com</option>
+              <option value="toptal">Toptal (exclusivo)</option>
+            </select>
+            <button class="btn-primary" id="btn-start-autopilot-freelance" style="flex: 1.2; padding: 8px; font-size: 12px; box-shadow: none;">Iniciar</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; font-size:10px; color:var(--muted);">
+            <span>Filtro:</span>
+            <input type="range" id="ap-freelance-threshold" min="0" max="50" value="10" style="flex:1; accent-color:#6366f1;" />
+            <span id="ap-freelance-lbl">10%</span>
+          </div>
         </div>
+
+        <!-- === TRABAJO: Portales de empleo === -->
+        <div id="ap-job" style="display:none; flex-direction:column; gap:8px;">
+          <p style="font-size:10px; color:var(--muted); margin:0;">Busca ofertas de empleo</p>
+          <input type="text" id="ap-job-keywords" placeholder="Ej: Desarrollador WordPress, PHP..." style="font-size: 12px; padding: 8px 12px;" />
+          <div style="display: flex; gap: 6px;">
+            <select id="ap-job-platform" style="flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 9px; color: var(--text); font-size: 12px; padding: 8px 10px; outline: none; font-family: inherit;">
+              <option value="linkedin">LinkedIn</option>
+              <option value="indeed">Indeed</option>
+              <option value="computrabajo">Computrabajo</option>
+              <option value="getonbrd">GetOnBoard</option>
+              <option value="infojobs">InfoJobs</option>
+              <option value="wellfound">Wellfound (startups)</option>
+              <option value="remoteok">Remote OK</option>
+              <option value="weworkremotely">We Work Remotely</option>
+              <option value="arc">Arc</option>
+              <option value="bumeran">Bumeran</option>
+            </select>
+            <button class="btn-primary" id="btn-start-autopilot-job" style="flex: 1.2; padding: 8px; font-size: 12px; box-shadow: none;">Iniciar</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; font-size:10px; color:var(--muted);">
+            <span>Filtro:</span>
+            <input type="range" id="ap-job-threshold" min="0" max="50" value="10" style="flex:1; accent-color:#6366f1;" />
+            <span id="ap-job-lbl">10%</span>
+          </div>
+        </div>
+
       </div>
 
       <!-- Running State -->
