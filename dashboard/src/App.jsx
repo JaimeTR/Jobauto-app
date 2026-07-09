@@ -1469,11 +1469,10 @@ export default function App() {
                         const appInterview = interviews.find(i => 
                           (mode === 'job' ? i.applicationId === app.id : i.proposalId === app.id)
                         );
-                        let compScoreClass = 'compatibility-low';
-                        if (app.compatibilityScore >= 80) compScoreClass = 'compatibility-high';
-                        else if (app.compatibilityScore >= 50) compScoreClass = 'compatibility-medium';
 
                         const inactiveAlert = isProposalInactive(app);
+                        const descSnippet = (app.description || '').substring(0, 120);
+                        const compScoreClass = (app.compatibilityScore || 0) >= 70 ? 'compatibility-high' : ((app.compatibilityScore || 0) >= 40 ? 'compatibility-medium' : 'compatibility-low');
 
                         return (
                           <div 
@@ -1485,29 +1484,61 @@ export default function App() {
                               setCurrentAppId(app.id);
                               setShowDetailModal(true);
                               setGeneratedFollowUp('');
-                              setActiveAiTab(app.compatibilityScore ? 'cv' : 'none');
+                              setActiveAiTab('cv');
                             }}
                             style={{ borderLeft: inactiveAlert ? '3px solid var(--color-interviewing)' : '1px solid var(--border-color)' }}
                           >
-                            <h4>{app.title}</h4>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '6px' }}>
+                              <h4 style={{ flex: 1, margin: 0 }}>{app.title}</h4>
+                              {app.url && (
+                                <a href={app.url} target="_blank" rel="noreferrer"
+                                  onClick={e => e.stopPropagation()}
+                                  title="Abrir publicacion original"
+                                  style={{ color: 'var(--accent-color)', flexShrink: 0, marginTop: '1px' }}>
+                                  <ExternalLink size={14} />
+                                </a>
+                              )}
+                            </div>
                             <div className="company">{app.company}</div>
-                            {app.budget && <div className="budget" style={{ fontSize: '11px', color: 'var(--text-muted)' }}><DollarSign size={10} style={{ display: 'inline', verticalAlign: 'middle' }} /> {app.budget}</div>}
-                            {app.estimatedHours && <div className="hours" style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}><Clock size={10} style={{ display: 'inline', verticalAlign: 'middle' }} /> Estimación: {app.estimatedHours} horas</div>}
-                            
+
+                            {(app.platform || app.budget) && (
+                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                {app.platform && (
+                                  <span style={{
+                                    fontSize: '10px', background: 'rgba(99,102,241,0.15)', color: '#a5b4fc',
+                                    padding: '2px 6px', borderRadius: '4px', fontWeight: 600,
+                                  }}>
+                                    {app.platform}
+                                  </span>
+                                )}
+                                {app.budget && (
+                                  <span style={{ fontSize: '11px', color: '#34d399', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                    <DollarSign size={10} /> {app.budget}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            {descSnippet && (
+                              <div style={{ fontSize: '11px', color: '#6b7280', lineHeight: '1.4', maxHeight: '32px', overflow: 'hidden' }}>
+                                {descSnippet}{app.description && app.description.length > 120 ? '...' : ''}
+                              </div>
+                            )}
+
                             <div className="job-card-footer">
                               <span className="date">{new Date(app.dateAdded).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })}</span>
-                              {app.compatibilityScore && <span className={`compatibility-pill ${compScoreClass}`}>{app.compatibilityScore}%</span>}
+                              {app.compatibilityScore ? <span className={`compatibility-pill ${compScoreClass}`}>{app.compatibilityScore}%</span> : null}
                             </div>
                             
                             {inactiveAlert && (
-                              <div style={{ marginTop: '6px', fontSize: '10px', color: 'var(--color-interviewing)', display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 'bold' }}>
-                                <AlertTriangle size={11} /> <span>Recomendado enviar seguimiento</span>
+                              <div style={{ marginTop: '4px', fontSize: '10px', color: 'var(--color-interviewing)', display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 'bold' }}>
+                                <AlertTriangle size={11} /> <span>Seguimiento pendiente</span>
                               </div>
                             )}
 
                             {appInterview && (
-                              <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--color-interviewing)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <Clock size={11} /> <span>Reunión: {appInterview.date} a las {appInterview.time}</span>
+                              <div style={{ marginTop: '6px', fontSize: '11px', color: 'var(--color-interviewing)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Clock size={11} /> <span>{appInterview.date} a las {appInterview.time}</span>
                               </div>
                             )}
                           </div>

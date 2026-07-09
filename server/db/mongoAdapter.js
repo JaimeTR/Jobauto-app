@@ -249,7 +249,9 @@ export const mongoAdapter = {
       compatibilityScore: app.compatibilityScore || null,
       compatibilityRationale: app.compatibilityRationale || '',
       interviewPrep: app.interviewPrep || null,
-      clientRedFlags: app.clientRedFlags || []
+      clientRedFlags: app.clientRedFlags || [],
+      platform: app.platform || '',
+      budget: app.budget || ''
     };
     await database.collection('applications').insertOne(newApp);
     return newApp;
