@@ -319,7 +319,8 @@ export default function App() {
   });
   const [settings, setSettings] = useState({
     provider: 'gemini', geminiApiKey: '', groqApiKey: '', ollamaModel: 'llama3', ollamaUrl: 'http://localhost:11434',
-    defaultEmailTemplate: '', emailSignature: '', rssFeeds: [], monthlyTarget: '3000', alertKeywords: '', calendarLink: ''
+    defaultEmailTemplate: '', emailSignature: '', rssFeeds: [], monthlyTarget: '3000', alertKeywords: '', calendarLink: '',
+    profilePhoto: '', profileName: '', profileEmail: '', profilePhone: ''
   });
   const [applications, setApplications] = useState([]);
   const [interviews, setInterviews] = useState([]);
@@ -2121,12 +2122,47 @@ export default function App() {
         {activeTab === 'settings' && (
           <section className="content-section active">
             <div className="card">
-              <h3>Configuración del Sistema</h3>
-              <p className="section-description">Ajusta tus claves de IA y configura tus feeds RSS de Upwork y Freelancer en segundo plano.</p>
+              <h3>Configuracion del Sistema</h3>
+              <p className="section-description">Administra tu perfil, IA, monitoreo RSS y preferencias del sistema.</p>
               
               <form onSubmit={handleSaveSettings}>
-                <div className="form-group">
-                  <label>Proveedor de IA</label>
+                {/* Perfil y contacto */}
+                <div style={{ marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '20px' }}>
+                  <h4 style={{ fontSize: '14px', marginBottom: '12px', color: '#a5b4fc' }}>Perfil de Usuario</h4>
+                  <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', marginBottom: '12px' }}>
+                    <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: settings.profilePhoto ? `url(${settings.profilePhoto}) center/cover` : 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '2px solid rgba(99,102,241,0.3)' }}>
+                      {!settings.profilePhoto && <User size={28} color="white" />}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: '11px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>URL de foto de perfil</label>
+                      <input type="text" value={settings.profilePhoto || ''} onChange={e => setSettings({...settings, profilePhoto: e.target.value})} placeholder="https://tufoto.com/perfil.jpg" style={{ background: '#121829', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '8px 12px', color: 'white', fontSize: '12px', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '11px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Nombre completo</label>
+                      <input type="text" value={settings.profileName || ''} onChange={e => setSettings({...settings, profileName: e.target.value})} placeholder="Tu nombre" style={{ background: '#121829', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '8px 12px', color: 'white', fontSize: '12px', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Correo principal</label>
+                      <input type="email" value={settings.profileEmail || ''} onChange={e => setSettings({...settings, profileEmail: e.target.value})} placeholder="tu@correo.com" style={{ background: '#121829', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '8px 12px', color: 'white', fontSize: '12px', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11px', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Telefono</label>
+                      <input type="text" value={settings.profilePhone || ''} onChange={e => setSettings({...settings, profilePhone: e.target.value})} placeholder="+51 999 888 777" style={{ background: '#121829', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '8px 12px', color: 'white', fontSize: '12px', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
+                    </div>
+                  </div>
+                  <p style={{ fontSize: '10px', color: '#4b5563', marginTop: '8px' }}>
+                    Estos datos se usaran para propuestas, correos y futura integracion con CRM.
+                  </p>
+                </div>
+
+                {/* IA Provider */}
+                {/* IA Provider */}
+                <div style={{ marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '20px' }}>
+                  <h4 style={{ fontSize: '14px', marginBottom: '12px', color: '#a5b4fc' }}>Inteligencia Artificial</h4>
+                  <div className="form-group">
+                    <label>Proveedor de IA</label>
                   <select value={settings.provider} onChange={e => setSettings({...settings, provider: e.target.value})}>
                     <option value="gemini">Google Gemini API (Premium)</option>
                     <option value="groq">Groq Cloud API (Rápido y Gratis)</option>
@@ -2172,6 +2208,7 @@ export default function App() {
                     </div>
                   </>
                 )}
+                </div>
 
                 <div className="form-group" style={{ marginTop: '20px', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
                   <label>Meta Mensual de Facturación Freelance (USD)</label>
