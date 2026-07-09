@@ -39,6 +39,55 @@ import OnboardingWizard from './OnboardingWizard.jsx';
 
 const API_BASE = '/api';
 
+function AssignUserDropdown({ value, token, onChange }) {
+  const [users, setUsers] = useState([]);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/users/list`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json()).then(data => setUsers(Array.isArray(data) ? data : [])).catch(() => {});
+  }, [token]);
+
+  return (
+    <div style={{ position: 'relative', flex: 1 }}>
+      <div onClick={() => setOpen(!open)} style={{
+        background: '#121829', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px',
+        padding: '6px 10px', color: value ? 'white' : '#6b7280', fontSize: '12px', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+      }}>
+        <span>{value || 'Seleccionar encargado...'}</span>
+        <span style={{ fontSize: '10px' }}>{open ? '▲' : '▼'}</span>
+      </div>
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+          background: '#121829', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px',
+          marginTop: '4px', maxHeight: '150px', overflowY: 'auto'
+        }}>
+          <div onClick={() => { onChange(''); setOpen(false); }} style={{
+            padding: '6px 10px', fontSize: '12px', color: '#6b7280', cursor: 'pointer',
+            borderBottom: '1px solid rgba(255,255,255,0.05)'
+          }}>Sin asignar</div>
+          {users.map(u => (
+            <div key={u.id} onClick={() => { onChange(u.email); setOpen(false); }} style={{
+              padding: '6px 10px', fontSize: '12px', color: value === u.email ? '#a5b4fc' : '#d1d5db', cursor: 'pointer',
+              background: value === u.email ? 'rgba(99,102,241,0.1)' : 'transparent',
+              display: 'flex', alignItems: 'center', gap: '6px'
+            }}>
+              <span style={{
+                width: '20px', height: '20px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                color: 'white', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>{u.email.charAt(0).toUpperCase()}</span>
+              {u.email}
+            </div>
+          ))}
+        </div>
+      )}
+      {open && <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setOpen(false)} />}
+    </div>
+  );
+}
+
 function safeStr(val, fallback = '') {
   if (val === null || val === undefined) return fallback;
   if (typeof val === 'string') return val;
@@ -1606,7 +1655,6 @@ export default function App() {
                                     <User size={11} style={{ color: '#6b7280' }} />
                                   </div>
                                 )}
-                                {app.compatibilityScore ? <span className={`compatibility-pill ${compScoreClass}`}>{app.compatibilityScore}%</span> : null}
                               </div>
 
                               <div style={{ display: 'flex', gap: '3px' }}>
@@ -2373,19 +2421,13 @@ export default function App() {
                     }}>
                       {currentApp.assignedTo ? currentApp.assignedTo.charAt(0).toUpperCase() : <User size={14} style={{ color: '#6b7280' }} />}
                     </div>
-                    <input
-                      type="text"
+                    <AssignUserDropdown
                       value={currentApp.assignedTo || ''}
-                      onChange={async (e) => {
-                        const name = e.target.value;
-                        setApplications(prev => prev.map(a => a.id === currentApp.id ? { ...a, assignedTo: name } : a));
+                      token={token}
+                      onChange={async (email) => {
+                        setApplications(prev => prev.map(a => a.id === currentApp.id ? { ...a, assignedTo: email } : a));
                         const ep = mode === 'job' ? `${API_BASE}/applications/${currentApp.id}` : `${API_BASE}/freelance/proposals/${currentApp.id}`;
-                        await authFetch(ep, { method: 'PUT', body: JSON.stringify({ assignedTo: name }) });
-                      }}
-                      placeholder="Nombre del encargado..."
-                      style={{
-                        flex: 1, background: '#121829', border: '1px solid rgba(255,255,255,0.08)',
-                        borderRadius: '6px', padding: '6px 10px', color: 'white', fontSize: '12px', outline: 'none'
+                        await authFetch(ep, { method: 'PUT', body: JSON.stringify({ assignedTo: email }) });
                       }}
                     />
                   </div>

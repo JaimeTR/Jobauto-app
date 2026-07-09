@@ -15,6 +15,7 @@ import {
   deletePendingUser,
   updatePendingUser,
   updateUser,
+  getAllUsers,
   // Job
   getJobProfile, 
   updateJobProfile, 
@@ -133,6 +134,17 @@ app.get('/api/health', (req, res) => {
 // Verificar token (para extension)
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   res.json({ userId: req.userId, email: req.userEmail });
+});
+
+// Listar usuarios del equipo (para asignacion de tareas)
+app.get('/api/users/list', authenticateToken, async (req, res) => {
+  try {
+    const users = await getAllUsers();
+    const list = users.map(u => ({ id: u.id, email: u.email }));
+    res.json(list);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Registro de Usuario (Paso 1: Generación de OTP)
