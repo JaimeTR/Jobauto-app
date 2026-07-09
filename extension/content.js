@@ -901,6 +901,10 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
         ? `${apiUrl}/api/leads`
         : `${apiUrl}/api/freelance/proposals`;
 
+    // Quick keyword filter based on threshold
+    const threshold = ap.minScore || 0;
+    const searchKeywords = (ap.keywords || '').toLowerCase().split(/[\s,]+/).filter(w => w.length > 2);
+
     let i = 0;
     for (const listing of listings) {
       i++;
@@ -911,10 +915,21 @@ function runAutopilotStep(ap, token, apiUrl, mode) {
       }
 
       const progressEl = document.getElementById('hud-progress');
-      if (progressEl) progressEl.textContent = `Guardando: ${i}/${listings.length} | Pag ${currentPage}`;
+      if (progressEl) progressEl.textContent = `Filtrando: ${i}/${listings.length} | Pag ${currentPage}`;
 
       // Skip empty titles
       if (!listing.title || listing.title.length < 3) continue;
+
+      // Keyword filter
+      if (threshold > 0 && searchKeywords.length > 0) {
+        const text = (listing.title + ' ' + (listing.snippet || '') + ' ' + (listing.description || '')).toLowerCase();
+        let matches = 0;
+        for (const kw of searchKeywords) {
+          if (text.includes(kw)) matches++;
+        }
+        const score = Math.min(100, Math.round((matches / searchKeywords.length) * 100));
+        if (score < threshold) continue; // Skip if below threshold
+      }
 
       try {
         let payload;

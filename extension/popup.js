@@ -439,7 +439,7 @@ function startAutopilot() {
     if (mode === 'freelance') {
       const keywords = document.getElementById('ap-freelance-keywords')?.value?.trim();
       const platform = document.getElementById('ap-freelance-platform')?.value;
-      const threshold = parseInt(document.getElementById('ap-freelance-threshold')?.value || '10', 10);
+      const threshold = parseInt(document.getElementById('ap-freelance-threshold')?.value || '0', 10);
       if (!keywords) { showMainToast('Ingresa palabras clave.', 'error'); return; }
       startPlatformSearch(mode, keywords, platform, threshold, {
         upwork: `https://www.upwork.com/nx/search/jobs/?q=${encodeURIComponent(keywords)}&sort=recency`,
@@ -458,7 +458,7 @@ function startAutopilot() {
     if (mode === 'job') {
       const keywords = document.getElementById('ap-job-keywords')?.value?.trim();
       const platform = document.getElementById('ap-job-platform')?.value;
-      const threshold = parseInt(document.getElementById('ap-job-threshold')?.value || '10', 10);
+      const threshold = parseInt(document.getElementById('ap-job-threshold')?.value || '0', 10);
       if (!keywords) { showMainToast('Ingresa palabras clave.', 'error'); return; }
       startPlatformSearch(mode, keywords, platform, threshold, {
         linkedin: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(keywords)}&sortBy=DD`,

@@ -503,7 +503,7 @@
 
         <!-- === FREELANCE: Plataformas freelance === -->
         <div id="ap-freelance" style="display:none; flex-direction:column; gap:8px;">
-          <p style="font-size:10px; color:var(--muted); margin:0;">Busca proyectos en plataformas freelance</p>
+          <p style="font-size:10px; color:var(--muted); margin:0 0 2px 0;">Si pones 0% guarda todo. Con 50% solo proyectos muy relacionados a tus keywords.</p>
           <input type="text" id="ap-freelance-keywords" placeholder="Ej: WordPress, React, PHP..." style="font-size: 12px; padding: 8px 12px;" />
           <div style="display: flex; gap: 6px;">
             <select id="ap-freelance-platform" style="flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 9px; color: var(--text); font-size: 12px; padding: 8px 10px; outline: none; font-family: inherit;">
@@ -519,15 +519,15 @@
             <button class="btn-primary" id="btn-start-autopilot-freelance" style="flex: 1.2; padding: 8px; font-size: 12px; box-shadow: none;">Iniciar</button>
           </div>
           <div style="display:flex; align-items:center; gap:6px; font-size:10px; color:var(--muted);">
-            <span>Filtro:</span>
-            <input type="range" id="ap-freelance-threshold" min="0" max="50" value="10" style="flex:1; accent-color:#6366f1;" />
-            <span id="ap-freelance-lbl">10%</span>
+            <span>Coincidencia minima:</span>
+            <input type="range" id="ap-freelance-threshold" min="0" max="100" value="0" style="flex:1; accent-color:#6366f1;" />
+            <span id="ap-freelance-lbl" style="min-width:28px;">0%</span>
           </div>
         </div>
 
         <!-- === TRABAJO: Portales de empleo === -->
         <div id="ap-job" style="display:none; flex-direction:column; gap:8px;">
-          <p style="font-size:10px; color:var(--muted); margin:0;">Busca ofertas de empleo</p>
+          <p style="font-size:10px; color:var(--muted); margin:0 0 2px 0;">0% = guarda todo. 50% = solo ofertas muy afines a tus keywords.</p>
           <input type="text" id="ap-job-keywords" placeholder="Ej: Desarrollador WordPress, PHP..." style="font-size: 12px; padding: 8px 12px;" />
           <div style="display: flex; gap: 6px;">
             <select id="ap-job-platform" style="flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 9px; color: var(--text); font-size: 12px; padding: 8px 10px; outline: none; font-family: inherit;">
@@ -545,9 +545,9 @@
             <button class="btn-primary" id="btn-start-autopilot-job" style="flex: 1.2; padding: 8px; font-size: 12px; box-shadow: none;">Iniciar</button>
           </div>
           <div style="display:flex; align-items:center; gap:6px; font-size:10px; color:var(--muted);">
-            <span>Filtro:</span>
-            <input type="range" id="ap-job-threshold" min="0" max="50" value="10" style="flex:1; accent-color:#6366f1;" />
-            <span id="ap-job-lbl">10%</span>
+            <span>Coincidencia minima:</span>
+            <input type="range" id="ap-job-threshold" min="0" max="100" value="0" style="flex:1; accent-color:#6366f1;" />
+            <span id="ap-job-lbl" style="min-width:28px;">0%</span>
           </div>
         </div>
 
