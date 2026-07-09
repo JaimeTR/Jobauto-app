@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JobAuto</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #07091a;
+      --bg2: #0f1427;
+      --bg3: #161d35;
+      --border: rgba(255,255,255,0.07);
+      --text: #f1f5f9;
+      --muted: #64748b;
+      --accent: #6366f1;
+      --accent2: #8b5cf6;
+      --success: #10b981;
+      --danger: #ef4444;
+      --grad: linear-gradient(135deg, #6366f1, #8b5cf6);
+    }
+
+    body {
+      width: 340px;
+      min-height: 200px;
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    /* ── Shared ── */
+    input {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .2s;
+    }
+    input:focus { border-color: var(--accent); }
+    input::placeholder { color: var(--muted); }
+
+    .btn-primary {
+      width: 100%;
+      padding: 11px;
+      background: var(--grad);
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-size: 13.5px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity .2s, transform .15s;
+      box-shadow: 0 4px 14px rgba(99,102,241,0.3);
+    }
+    .btn-primary:hover { opacity: .88; transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+    .btn-ghost {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--muted);
+      font-size: 12.5px;
+      font-family: inherit;
+      cursor: pointer;
+      padding: 9px 14px;
+      transition: background .2s;
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.09); color: var(--text); }
+
+    /* ── Toast ── */
+    #toast {
+      display: none;
+      font-size: 12px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      text-align: center;
+      font-weight: 500;
+      margin-top: 8px;
+    }
+
+    /* ══════════════════════════════════════════
+       VIEW 1: LOGIN
+    ══════════════════════════════════════════ */
+    #view-login {
+      display: flex;
+      flex-direction: column;
+      padding: 28px 24px 24px;
+      gap: 0;
+      animation: fadeIn .3s ease;
+    }
+
+    .login-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+    .logo-wrap {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      background: var(--grad);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 24px rgba(99,102,241,0.4);
+    }
+    .logo-wrap svg { width: 26px; height: 26px; color: white; }
+    .login-header h1 {
+      font-size: 22px; font-weight: 700; letter-spacing: -0.5px;
+      background: var(--grad);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .login-header p { font-size: 12.5px; color: var(--muted); }
+
+    .login-form { display: flex; flex-direction: column; gap: 10px; }
+
+    #view-2fa {
+      display: none;
+      flex-direction: column;
+      padding: 28px 24px 24px;
+      gap: 0;
+      animation: fadeIn .3s ease;
+    }
+    .twofa-header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .twofa-header .icon { font-size: 36px; margin-bottom: 8px; }
+    .twofa-header h2 { font-size: 16px; font-weight: 700; color: var(--text); }
+    .twofa-header p { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+    .otp-input {
+      text-align: center;
+      letter-spacing: 8px;
+      font-size: 22px;
+      font-weight: 700;
+    }
+    .twofa-footer {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+      font-size: 11.5px;
+    }
+    .link { color: var(--accent); cursor: pointer; text-decoration: none; }
+    .link:hover { text-decoration: underline; }
+
+    /* ══════════════════════════════════════════
+       VIEW 2: GUIDE MODAL
+    ══════════════════════════════════════════ */
+    #view-guide {
+      display: none;
+      flex-direction: column;
+      padding: 0;
+      animation: slideUp .35s ease;
+    }
+    .guide-hero {
+      background: linear-gradient(145deg, #1a1040 0%, #0f1427 100%);
+      padding: 28px 24px 20px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .guide-hero .hero-icon { font-size: 42px; margin-bottom: 10px; }
+    .guide-hero h2 {
+      font-size: 18px; font-weight: 700; color: var(--text);
+      background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .guide-hero p { font-size: 12.5px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+
+    /* Steps */
+    .guide-steps {
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .guide-step {
+      display: flex;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+      align-items: flex-start;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .4s ease, transform .4s ease;
+    }
+    .guide-step.visible { opacity: 1; transform: translateY(0); }
+    .guide-step:last-child { border-bottom: none; }
+    .step-icon {
+      width: 38px; height: 38px; flex-shrink: 0;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .step-icon.purple { background: rgba(99,102,241,0.15); }
+    .step-icon.green  { background: rgba(16,185,129,0.15); }
+    .step-icon.blue   { background: rgba(59,130,246,0.15); }
+    .step-icon.orange { background: rgba(245,158,11,0.15); }
+    .step-body h4 { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+    .step-body p  { font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+
+    .guide-footer {
+      padding: 16px 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* ══════════════════════════════════════════
+       VIEW 3: MAIN TOOL
+    ══════════════════════════════════════════ */
+    #view-main {
+      display: none;
+      flex-direction: column;
+      animation: fadeIn .3s ease;
+    }
+
+    /* Top bar */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+    }
+    .topbar-brand {
+      display: flex; align-items: center; gap: 9px;
+    }
+    .topbar-logo {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: var(--grad); display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 10px rgba(99,102,241,0.3);
+    }
+    .topbar-logo svg { width: 16px; height: 16px; color: white; }
+    .topbar-title { font-size: 14px; font-weight: 700; color: var(--text); }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+    .server-badge {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 600; color: var(--muted);
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 20px; padding: 3px 10px;
+    }
+    .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--muted); transition: background .3s;
+    }
+    .dot.online  { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .dot.offline { background: var(--danger);  box-shadow: 0 0 6px var(--danger); }
+
+    /* User chip */
+    .user-chip {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 18px;
+      background: rgba(99,102,241,0.06);
+      border-bottom: 1px solid var(--border);
+    }
+    .user-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--grad); display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: white;
+    }
+    .user-info { flex: 1; overflow: hidden; }
+    .user-email { font-size: 12px; color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role  { font-size: 10.5px; color: var(--muted); }
+    .btn-logout {
+      background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 7px; color: #f87171; font-size: 11px; font-family: inherit;
+      padding: 5px 10px; cursor: pointer; transition: background .2s;
+    }
+    .btn-logout:hover { background: rgba(239,68,68,0.2); }
+
+    /* Mode switch */
+    .mode-section {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .mode-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+    .mode-switcher {
+      display: flex;
+      background: var(--bg3);
+      border-radius: 9px;
+      padding: 3px;
+      border: 1px solid var(--border);
+    }
+    .mode-btn {
+      flex: 1; padding: 7px; border: none; border-radius: 6px;
+      background: transparent; color: var(--muted);
+      font-size: 12.5px; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: all .2s;
+    }
+    .mode-btn.active {
+      background: var(--grad); color: white;
+      box-shadow: 0 2px 8px rgba(99,102,241,0.3);
+    }
+
+    /* Actions */
+    .actions {
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .action-btn {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 14px;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 10px; cursor: pointer; transition: all .2s;
+      text-align: left; width: 100%; font-family: inherit;
+    }
+    .action-btn:hover { background: var(--bg3); border-color: rgba(99,102,241,0.3); }
+    .action-btn .ab-icon {
+      width: 34px; height: 34px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; flex-shrink: 0;
+    }
+    .action-btn .ab-text h4 { font-size: 12.5px; font-weight: 600; color: var(--text); }
+    .action-btn .ab-text p  { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    /* Server config */
+    .server-config {
+      padding: 14px 18px 20px;
+    }
+    .config-label { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 8px; }
+    .server-row { display: flex; gap: 6px; }
+    .server-row input { flex: 1; font-size: 12px; padding: 8px 12px; }
+    .btn-save {
+      padding: 8px 13px; border-radius: 9px; border: none;
+      background: var(--grad); color: white; font-size: 12px; font-weight: 600;
+      font-family: inherit; cursor: pointer; white-space: nowrap;
+      transition: opacity .2s;
+    }
+    .btn-save:hover { opacity: .85; }
+
+    /* Toast in main */
+    #main-toast {
+      display: none;
+      margin: 0 18px 12px;
+      font-size: 12px; padding: 8px 12px;
+      border-radius: 8px; text-align: center; font-weight: 500;
+    }
+
+    /* Animations */
+    @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse   { 0% { transform: scale(0.9); opacity: 0.6; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(0.9); opacity: 0.6; } }
+  </style>
+</head>
+<body>
+
+  <!-- ══════════ VIEW 1: LOGIN ══════════ -->
+  <div id="view-login">
+    <div class="login-header">
+      <div class="logo-wrap">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+      </div>
+      <h1>JobAuto</h1>
+      <p>Tu copiloto de búsqueda de trabajo</p>
+    </div>
+
+    <div class="login-form" id="login-form">
+      <input type="email" id="login-email" placeholder="correo@ejemplo.com" autocomplete="email" />
+      <input type="password" id="login-password" placeholder="Contraseña" autocomplete="current-password" />
+      <button class="btn-primary" id="btn-login">Iniciar Sesión</button>
+      <button class="btn-ghost" id="btn-open-web" style="margin-top: 2px;">Iniciar sesión en el navegador →</button>
+      <div id="login-toast"></div>
+    </div>
+  </div>
+
+  <!-- ══════════ VIEW 2FA ══════════ -->
+  <div id="view-2fa">
+    <div class="twofa-header">
+      <div class="icon">🔐</div>
+      <h2>Verificación de Seguridad</h2>
+      <p>Ingresa el código de 6 dígitos<br>enviado a tu correo.</p>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <input type="text" id="code-input" class="otp-input" placeholder="000000" maxlength="6" />
+      <button class="btn-primary" id="btn-verify">Confirmar Acceso</button>
+      <div class="twofa-footer">
+        <span id="resend-label" style="color: var(--muted); font-size: 11.5px;"></span>
+        <span id="resend-link" class="link" style="display:none; font-size:11.5px;">Reenviar código</span>
+        <span id="btn-back-login" class="link" style="font-size:11.5px;">← Volver</span>
+      </div>
+      <div id="twofa-toast"></div>
+    </div>
+  </div>
+
+  <!-- ══════════ VIEW 3: GUIDE ══════════ -->
+  <div id="view-guide">
+    <div class="guide-hero">
+      <div class="hero-icon">🎉</div>
+      <h2>¡Bienvenido a JobAuto!</h2>
+      <p>Aquí tienes una guía rápida de cómo<br>sacarle el máximo provecho.</p>
+    </div>
+
+    <div class="guide-steps">
+      <div class="guide-step">
+        <div class="step-icon purple">🌐</div>
+        <div class="step-body">
+          <h4>Navega a una oferta</h4>
+          <p>Visita cualquier vacante en LinkedIn, Upwork, Freelancer, Indeed, Workana, etc.</p>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-icon green">⚡</div>
+        <div class="step-body">
+          <h4>Toca el botón flotante</h4>
+          <p>Verás un rayo <strong style="color:#a5b4fc">⚡</strong> en la esquina inferior derecha de la página. Haz clic para abrir el panel de extracción.</p>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-icon blue">🤖</div>
+        <div class="step-body">
+          <h4>Extrae con IA</h4>
+          <p>La IA lee el contenido de la página y rellena título, empresa, descripción, presupuesto y contacto automáticamente.</p>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-icon orange">📋</div>
+        <div class="step-body">
+          <h4>Revisa y guarda</h4>
+          <p>Confirma los datos y guárdalos en tu tablero. Desde ahí genera propuestas, gestiona el estado y más.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="guide-footer">
+      <button class="btn-primary" id="btn-guide-finish">¡Empezar a Usar JobAuto →</button>
+      <p style="text-align:center; font-size:11px; color: var(--muted);">Esta guía no volverá a aparecer</p>
+    </div>
+  </div>
+
+  <!-- ══════════ VIEW 4: MAIN TOOL ══════════ -->
+  <div id="view-main">
+
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="topbar-brand">
+        <div class="topbar-logo">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+        </div>
+        <span class="topbar-title">JobAuto</span>
+      </div>
+      <div class="topbar-right">
+        <div class="server-badge">
+          <span class="dot" id="status-dot"></span>
+          <span id="status-label">...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- User chip -->
+    <div class="user-chip">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <div class="user-info">
+        <div class="user-email" id="user-email-label">—</div>
+        <div class="user-role">Sesión activa</div>
+      </div>
+      <button class="btn-logout" id="btn-logout">Salir</button>
+    </div>
+
+    <!-- Mode switch -->
+    <div class="mode-section">
+      <div class="mode-label">Modo de Extracción</div>
+      <div class="mode-switcher">
+        <button class="mode-btn active" id="mode-freelance-btn">🚀 Freelance</button>
+        <button class="mode-btn" id="mode-job-btn">💼 Trabajo</button>
+      </div>
+    </div>
+
+    <!-- Autopilot Section -->
+    <div class="mode-section" style="border-bottom: 1px solid var(--border); padding-bottom: 16px;">
+      <div class="mode-label">🤖 Búsqueda Auto (Autopiloto)</div>
+      
+      <!-- Config State -->
+      <div id="autopilot-config" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+        <input type="text" id="autopilot-keywords" placeholder="Ej: React Developer, Node.js" style="font-size: 12px; padding: 8px 12px;" />
+        <div style="display: flex; gap: 6px;">
+          <select id="autopilot-platform" style="flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 9px; color: var(--text); font-size: 12px; padding: 8px 10px; outline: none; font-family: inherit;">
+            <option value="freelancer">Freelancer</option>
+            <option value="workana">Workana</option>
+            <option value="upwork">Upwork</option>
+            <option value="linkedin">LinkedIn</option>
+            <option value="computrabajo">Computrabajo</option>
+          </select>
+          <button class="btn-primary" id="btn-start-autopilot" style="flex: 1.2; padding: 8px; font-size: 12px; box-shadow: none;">Iniciar Autopiloto</button>
+        </div>
+      </div>
+
+      <!-- Running State -->
+      <div id="autopilot-running" style="display: none; flex-direction: column; gap: 10px; margin-top: 8px; background: rgba(99,102,241,0.06); padding: 12px; border-radius: 10px; border: 1px solid rgba(99,102,241,0.2);">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <span style="font-size: 12.5px; font-weight: 600; color: #a5b4fc; display: flex; align-items: center; gap: 6px;">
+            <span class="pulse-dot" style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #a5b4fc; animation: pulse 1.5s infinite;"></span>
+            Auto-búsqueda en curso...
+          </span>
+          <button id="btn-stop-autopilot" class="btn-logout" style="padding: 4px 8px; font-size: 10px;">Detener</button>
+        </div>
+        <div style="font-size: 11px; color: var(--muted); line-height: 1.4;">
+          Plataforma: <strong id="lbl-auto-platform" style="color:var(--text); text-transform: capitalize;">—</strong><br>
+          Estado: <strong id="lbl-auto-status" style="color:var(--text)">Preparando...</strong><br>
+          Progreso: <strong id="lbl-auto-progress" style="color:var(--text)">0/0</strong>
+        </div>
+        <div style="width: 100%; background: rgba(255,255,255,0.05); height: 4px; border-radius: 2px; overflow: hidden;">
+          <div id="pb-auto-progress" style="width: 0%; height: 100%; background: var(--grad); transition: width 0.3s;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="main-toast"></div>
+
+    <!-- Quick actions -->
+    <div class="actions">
+      <button class="action-btn" id="btn-open-dashboard">
+        <div class="ab-icon" style="background: rgba(99,102,241,0.15);">🗂️</div>
+        <div class="ab-text">
+          <h4>Abrir Tablero de Control</h4>
+          <p>Ver aplicaciones, postulaciones y métricas</p>
+        </div>
+      </button>
+      <button class="action-btn" id="btn-extract-now">
+        <div class="ab-icon" style="background: rgba(16,185,129,0.15);">⚡</div>
+        <div class="ab-text">
+          <h4>Extraer Esta Página</h4>
+          <p>Analizar la oferta actual con IA</p>
+        </div>
+      </button>
+      <button class="action-btn" id="btn-show-guide-again">
+        <div class="ab-icon" style="background: rgba(245,158,11,0.15);">📖</div>
+        <div class="ab-text">
+          <h4>Ver Guía de Uso</h4>
+          <p>Repasar cómo funciona la extensión</p>
+        </div>
+      </button>
+    </div>
+
+    <!-- Server config -->
+    <div class="server-config">
+      <div class="config-label">URL del Servidor</div>
+      <div class="server-row">
+        <input type="text" id="api-url-input" placeholder="http://localhost:3000" />
+        <button class="btn-save" id="btn-save-url">Guardar</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

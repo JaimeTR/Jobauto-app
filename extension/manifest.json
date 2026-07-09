@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "JobAuto Extractor",
+  "version": "1.0",
+  "description": "Extrae ofertas de trabajo y proyectos freelance, y las envía a tu panel local de JobAuto",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "http://localhost:3000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.linkedin.com/*",
+        "*://*.indeed.com/*",
+        "*://*.infojobs.net/*",
+        "*://*.getonbrd.com/*",
+        "*://*.computrabajo.com/*",
+        "*://*.computrabajo.com.pe/*",
+        "*://*.bumeran.com/*",
+        "*://*.bumeran.com.pe/*",
+        "*://*.freelancer.com/*",
+        "*://*.workana.com/*",
+        "*://*.upwork.com/*",
+        "*://localhost/*",
+        "*://127.0.0.1/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

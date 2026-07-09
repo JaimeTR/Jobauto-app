@@ -1,0 +1,19 @@
+# Reglas de reescritura para Hostinger (Apache/LiteSpeed)
+# Colocar en la raíz del dominio o subdominio
+
+RewriteEngine On
+
+# Redirigir todo el tráfico al puerto interno de Node.js
+RewriteRule ^(.*)$ http://localhost:3000/$1 [P,L]
+
+# Headers de seguridad
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "DENY"
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Comprimir assets
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json
+</IfModule>

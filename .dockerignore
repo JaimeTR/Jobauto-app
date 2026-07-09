@@ -1,0 +1,8 @@
+node_modules
+npm-debug.log
+.env
+.git
+.gitignore
+server/data.json
+dashboard/dist
+server/public
