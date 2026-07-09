@@ -28,7 +28,11 @@ import {
   TrendingUp,
   MessageSquare,
   Lock,
-  LogOut
+  LogOut,
+  Target,
+  Phone,
+  Star,
+  Building
 } from 'lucide-react';
 import OnboardingWizard from './OnboardingWizard.jsx';
 
@@ -246,8 +250,9 @@ export default function App() {
   const [onboardingCompleted, setOnboardingCompleted] = useState(true); // starts true to avoid flash
 
   // Global modes and tabs
-  const [mode, setMode] = useState('freelance'); // freelance, job
-  const [activeTab, setActiveTab] = useState('board'); // board, profile, portfolio, calendar, alerts, leads, settings
+  const [mode, setMode] = useState('freelance'); // freelance, business, job
+  const [activeTab, setActiveTab] = useState('board');
+  const [boardMode, setBoardMode] = useState('freelance'); // sub-tab for Kanban: freelance, business, job
   
   // Data State
   const [profile, setProfile] = useState({
@@ -1353,22 +1358,26 @@ export default function App() {
             <button 
               className={`mode-btn ${mode === 'freelance' ? 'active' : ''}`}
               onClick={() => { setMode('freelance'); setActiveTab('board'); }}
-            >
-              🚀 Freelance
-            </button>
+            >🚀 Freelance</button>
+            <button 
+              className={`mode-btn ${mode === 'business' ? 'active' : ''}`}
+              onClick={() => { setMode('business'); setActiveTab('leads'); }}
+            >🏢 Empresa</button>
             <button 
               className={`mode-btn ${mode === 'job' ? 'active' : ''}`}
               onClick={() => { setMode('job'); setActiveTab('board'); }}
-            >
-              💼 Trabajo
-            </button>
+            >💼 Trabajo</button>
           </div>
         </div>
 
         <nav className="sidebar-nav">
           <button className={`nav-item ${activeTab === 'board' ? 'active' : ''}`} onClick={() => setActiveTab('board')}>
             <Briefcase size={18} />
-            <span>Tablero {mode === 'job' ? 'Trabajos' : 'Proyectos'}</span>
+            <span>{mode === 'job' ? 'Tablero Trabajos' : mode === 'business' ? 'Tablero Proyectos' : 'Tablero Proyectos'}</span>
+          </button>
+          <button className={`nav-item ${activeTab === 'leads' ? 'active' : ''}`} onClick={() => { setActiveTab('leads'); loadLeads(); }}>
+            <Target size={18} />
+            <span>Clientes (Leads)</span>
           </button>
           <button 
             className={`nav-item ${activeTab === 'alerts' ? 'active' : ''}`} 
@@ -1629,6 +1638,75 @@ export default function App() {
                   );
                 })
               )}
+            </div>
+          </section>
+        )}
+
+        {/* Section: Leads (Clientes Potenciales) */}
+        {activeTab === 'leads' && (
+          <section className="content-section active">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ margin: 0 }}>Clientes Potenciales</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '4px 0 0 0' }}>
+                  Usa el modo 🏢 Empresa en la extension para buscar negocios en Google Maps
+                </p>
+              </div>
+              <span style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600 }}>
+                {leads.length} leads
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '8px' }}>
+              {['Nuevo', 'Contactado', 'Propuesta', 'Cerrado'].map(col => {
+                const colLeads = leads.filter(l => l.status === col || (col === 'Propuesta' && l.proposalGenerated));
+                const colors = { Nuevo: '#6366f1', Contactado: '#f59e0b', Propuesta: '#10b981', Cerrado: '#6b7280' };
+                return (
+                  <div key={col} style={{ flex: '0 0 260px', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border-color)', padding: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '8px', borderBottom: `2px solid ${colors[col]}` }}>
+                      <span style={{ fontWeight: 700, fontSize: '14px' }}>{col}</span>
+                      <span style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', color: 'var(--text-muted)' }}>{colLeads.length}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {colLeads.map(lead => (
+                        <div key={lead.id} style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '12px', cursor: 'pointer', fontSize: '12px' }}
+                          onClick={async () => {
+                            try {
+                              const res = await authFetch(`${API_BASE}/leads/${lead.id}/generate-proposal`, { method: 'POST' });
+                              const data = await res.json();
+                              if (res.ok) { showToast('Propuesta generada!'); loadLeads(); alert(`Propuesta ${lead.businessName}:\n\n${data.proposal?.proposal}\n\nPrecio: ${data.proposal?.estimatedPrice}`); }
+                            } catch (e) { showToast('Error', 'error'); }
+                          }}>
+                          <div style={{ fontWeight: 600, marginBottom: '3px' }}>{lead.businessName || 'Sin nombre'}</div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginBottom: '3px' }}>
+                            {lead.category && <span style={{ background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', padding: '1px 6px', borderRadius: '4px', fontSize: '10px', marginRight: '4px' }}>{lead.category}</span>}
+                            {lead.address?.substring(0, 35)}
+                          </div>
+                          <div style={{ color: '#6b7280', fontSize: '10px', marginBottom: '3px' }}>
+                            {lead.phone && <span><Phone size={10} style={{display:'inline'}} /> {lead.phone} </span>}
+                            {lead.rating && <span><Star size={10} style={{display:'inline',color:'#f59e0b'}} /> {lead.rating}</span>}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {lead.hasWebsite ? <span style={{ color:'#10b981', fontSize:'10px' }}>Tiene web</span> : <span style={{ color:'#ef4444', fontSize:'10px' }}>Sin web</span>}
+                            {lead.website && <a href={lead.website} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ color:'#6366f1', fontSize:'10px', marginLeft:'auto' }}><ExternalLink size={10} /></a>}
+                          </div>
+                          <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
+                            <button style={{ flex:1, fontSize:'10px', padding:'4px 8px', border:'1px solid var(--border-color)', borderRadius:'5px', background:'rgba(16,185,129,0.1)', color:'#34d399', cursor:'pointer' }}
+                              onClick={async (e) => { e.stopPropagation(); await authFetch(`${API_BASE}/leads/${lead.id}`, {method:'PUT', body:JSON.stringify({ status:'Contactado' })}); loadLeads(); }}>
+                              Contactar
+                            </button>
+                            <button style={{ flex:1, fontSize:'10px', padding:'4px 8px', border:'1px solid var(--border-color)', borderRadius:'5px', background:'rgba(239,68,68,0.1)', color:'#f87171', cursor:'pointer' }}
+                              onClick={async (e) => { e.stopPropagation(); await authFetch(`${API_BASE}/leads/${lead.id}`, {method:'DELETE'}); loadLeads(); }}>
+                              Eliminar
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      {colLeads.length === 0 && <div style={{ textAlign:'center', color:'var(--text-muted)', fontSize:'12px', padding:'20px' }}>Vacio</div>}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}
