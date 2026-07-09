@@ -57,11 +57,8 @@ import { pollAllFeeds } from './services/rssListener.js';
 import { verifyToken, generateToken, verifyPassword } from './utils/auth.js';
 import { sendVerificationEmail } from './services/emailService.js';
 import multer from 'multer';
-import { createRequire } from 'module';
 import mammoth from 'mammoth';
-
-const require = createRequire(import.meta.url);
-const pdfParse = require('pdf-parse');
+import { PDFParse } from 'pdf-parse';
 
 dotenv.config();
 
@@ -327,8 +324,10 @@ app.post('/api/settings', authenticateToken, async (req, res) => {
 async function extractTextFromBuffer(buffer, mimetype, originalname) {
   const ext = (originalname || '').split('.').pop().toLowerCase();
   if (mimetype === 'application/pdf' || ext === 'pdf') {
-    const parsed = await pdfParse(buffer);
-    return parsed.text;
+    const parser = new PDFParse({ data: buffer });
+    await parser.load();
+    const result = await parser.getText();
+    return result.text;
   }
   if (mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || ext === 'docx') {
     const result = await mammoth.extractRawText({ buffer });
