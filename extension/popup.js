@@ -26,9 +26,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (s.autopilotPlatform) document.getElementById('autopilot-platform').value = s.autopilotPlatform;
 
     if (s.token && s.email) {
-      // Validate token with server
       const valid = await validateToken(apiUrl, s.token);
-      if (valid) {
+      if (valid || valid === true) {
         updateAutopilotUI(s.mode || 'freelance');
         if (!s.guideSeen) {
           showView('guide');
@@ -38,7 +37,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           populateMain(s.email, s.mode || 'freelance');
         }
       } else {
-        // Token expired/invalid, clear and show login
         chrome.storage.local.remove(['token', 'email']);
         showView('login');
       }
@@ -326,9 +324,13 @@ async function validateToken(apiUrl, token) {
       if (data.email) chrome.storage.local.set({ email: data.email });
       return true;
     }
-    return false;
+    // Server returned error (401/403) = token invalid
+    if (res.status === 401 || res.status === 403) return false;
+    // Other errors = server issue, keep token
+    return true;
   } catch {
-    return false;
+    // Network error = server not reachable, keep token
+    return true;
   }
 }
 

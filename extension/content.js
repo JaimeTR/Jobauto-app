@@ -37,6 +37,20 @@ async function init() {
       }
     });
 
+    // Listen for storage changes from extension popup
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && changes.mode) {
+        window.dispatchEvent(new CustomEvent('JobAutoModeChanged', { detail: { mode: changes.mode.newValue } }));
+      }
+      if (area === 'local' && (changes.token || changes.email)) {
+        const token = changes.token?.newValue;
+        const email = changes.email?.newValue;
+        if (token && email) {
+          window.dispatchEvent(new CustomEvent('JobAutoSessionChanged', { detail: { token, email } }));
+        }
+      }
+    });
+
     chrome.runtime.onMessage.addListener((request) => {
       if (request.action === 'modeChanged') {
         window.dispatchEvent(new CustomEvent('JobAutoModeChanged', { detail: { mode: request.mode } }));
@@ -54,8 +68,10 @@ async function init() {
 
   chrome.storage.local.get(['mode'], (result) => {
     // Freelance platforms auto-detect
-    if (host.includes('freelancer') || host.includes('workana') || host.includes('upwork') || host.includes('guru.com') || host.includes('fiverr.com')) {
+    if (host.includes('freelancer') || host.includes('workana') || host.includes('upwork') || host.includes('guru.com') || host.includes('fiverr.com') || host.includes('contra.com') || host.includes('peopleperhour.com') || host.includes('toptal.com')) {
       currentMode = 'freelance';
+    } else if (host.includes('google.com/maps')) {
+      currentMode = 'business';
     } else {
       currentMode = result.mode || 'freelance';
     }
