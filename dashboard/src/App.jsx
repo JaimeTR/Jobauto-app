@@ -319,7 +319,7 @@ export default function App() {
   });
   const [settings, setSettings] = useState({
     provider: 'gemini', geminiApiKey: '', groqApiKey: '', ollamaModel: 'llama3', ollamaUrl: 'http://localhost:11434',
-    defaultEmailTemplate: '', emailSignature: '', rssFeeds: [], monthlyTarget: '3000'
+    defaultEmailTemplate: '', emailSignature: '', rssFeeds: [], monthlyTarget: '3000', alertKeywords: ''
   });
   const [applications, setApplications] = useState([]);
   const [interviews, setInterviews] = useState([]);
@@ -2134,12 +2134,34 @@ export default function App() {
                 </div>
 
                 <div className="form-group" style={{ marginTop: '20px', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
-                  <label>URLs de Feeds RSS (Monitoreo de Proyectos en segundo plano)</label>
-                  <span className="form-tip" style={{ marginBottom: '8px', display: 'block' }}>Pega aquí una URL por línea de tus búsquedas guardadas de Upwork o Freelancer.com. La IA los evaluará e informará si tienes compatibilidad mayor al 50%.</span>
+                  <label>Monitoreo Automatico de Proyectos (RSS)</label>
+                  <div style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '8px', padding: '12px', marginBottom: '12px', fontSize: '12px', color: '#94a3b8', lineHeight: 1.6 }}>
+                    <strong style={{ color: '#a5b4fc' }}>Como funciona:</strong> El servidor revisa estas URLs cada <strong>15 minutos</strong>. Cuando encuentra proyectos nuevos, los evalua con IA contra tu perfil. Si la compatibilidad supera el <strong>50%</strong>, aparece en la pestaña <strong>Alertas</strong>.
+                    <br /><br />
+                    <strong style={{ color: '#f59e0b' }}>Como obtener URLs RSS:</strong><br />
+                    • <strong>Upwork:</strong> Busca algo → scroll al final → clic en el icono <strong>RSS</strong> naranja → copia la URL<br />
+                    • <strong>Freelancer:</strong> Busca → abajo a la derecha clic en <strong>"RSS Feed"</strong> → copia la URL<br />
+                    • <strong>InfoJobs:</strong> Busca → final de pagina → <strong>"Sindicar busqueda (RSS)"</strong>
+                  </div>
+
+                  <label style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px', display: 'block' }}>Palabras clave para filtrar alertas (separadas por coma)</label>
+                  <input
+                    type="text"
+                    value={settings.alertKeywords || ''}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setSettings({...settings, alertKeywords: val});
+                    }}
+                    placeholder="wordpress, elementor, woocommerce, php"
+                    style={{ marginBottom: '12px', background: '#121829', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '10px 14px', color: 'white', fontSize: '13px', outline: 'none', width: '100%', boxSizing: 'border-box' }}
+                  />
+
+                  <label style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px', display: 'block' }}>URLs de Feeds RSS (una por linea)</label>
                   <textarea 
                     value={rssInput} 
                     onChange={e => setRssInput(e.target.value)} 
                     rows={5} 
+                    style={{ background: '#121829', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '10px 14px', color: 'white', fontSize: '13px', outline: 'none', width: '100%', boxSizing: 'border-box', resize: 'vertical' }}
                     placeholder="https://www.upwork.com/ab/feed/topics/rss?securityToken=...&#10;https://www.freelancer.com/rss/..."
                   />
                 </div>
