@@ -55,7 +55,7 @@ import {
   callLLM
 } from './ai.js';
 import { pollAllFeeds } from './services/rssListener.js';
-import { verifyToken, generateToken, verifyPassword } from './utils/auth.js';
+import { verifyToken, generateToken, verifyPassword, checkAiRateLimit } from './utils/auth.js';
 import { sendVerificationEmail } from './services/emailService.js';
 import multer from 'multer';
 import mammoth from 'mammoth';
@@ -105,6 +105,14 @@ function authenticateToken(req, res, next) {
   
   req.userId = decoded.userId;
   req.userEmail = decoded.email;
+  next();
+}
+
+function aiRateLimiter(req, res, next) {
+  const result = checkAiRateLimit(req.userId);
+  if (!result.allowed) {
+    return res.status(429).json({ error: `Demasiadas peticiones de IA. Espera ${result.resetIn}s.` });
+  }
   next();
 }
 

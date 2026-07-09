@@ -4,6 +4,14 @@ import { getSettings } from './db.js';
 
 dotenv.config();
 
+const MAX_PROFILE_TEXT = 3000;
+const MAX_DESCRIPTION_TEXT = 4000;
+
+function truncate(text, maxLen) {
+  if (!text || text.length <= maxLen) return text || '';
+  return text.substring(0, maxLen) + '... [truncado]';
+}
+
 function extractJson(text) {
   const start = text.indexOf('{');
   const end = text.lastIndexOf('}');
@@ -106,13 +114,13 @@ GitHub: ${profile.github}
 Sitio web: ${profile.website}
 Resumen de experiencia: ${profile.experienceSummary}
 Texto del CV Base:
-${profile.cvText}
+${truncate(profile.cvText, MAX_PROFILE_TEXT)}
 
 DETALLES DE LA OFERTA DE EMPLEO:
 Puesto: ${jobDetails.title}
 Empresa: ${jobDetails.company}
 Descripción/Requisitos:
-${jobDetails.description}
+${truncate(jobDetails.description, MAX_DESCRIPTION_TEXT)}
 
 Instrucciones para generar el JSON:
 Genera un objeto JSON estructurado con los siguientes campos:
@@ -139,13 +147,13 @@ Genera una guía de preparación para una entrevista de trabajo basada en el CV/
 INFORMACIÓN DEL CANDIDATO:
 Nombre: ${profile.name}
 Texto del CV/Resumen:
-${profile.cvText || profile.freelanceOverview}
+${truncate(profile.cvText || profile.freelanceOverview, MAX_PROFILE_TEXT)}
 
 DETALLES DE LA OFERTA:
 Puesto: ${jobDetails.title}
 Empresa: ${jobDetails.company}
 Descripción/Requisitos:
-${jobDetails.description}
+${truncate(jobDetails.description, MAX_DESCRIPTION_TEXT)}
 
 Instrucciones para generar el JSON:
 Genera un objeto JSON estructurado con un único campo:
@@ -177,7 +185,7 @@ LinkedIn: ${profile.linkedin}
 GitHub: ${profile.github}
 Sitio web: ${profile.website}
 Habilidades / Overview:
-${profile.freelanceOverview}
+${truncate(profile.freelanceOverview, MAX_PROFILE_TEXT)}
 
 PORTAFOLIO DE PROYECTOS DISPONIBLES (PROYECTOS PREVIOS DEL FREELANCER):
 ${portfolioText || "No hay proyectos en el portafolio todavía."}
@@ -187,7 +195,7 @@ Título: ${projectDetails.title}
 Cliente/Empresa: ${projectDetails.company}
 Presupuesto: ${projectDetails.budget}
 Descripción de Requisitos:
-${projectDetails.description}
+${truncate(projectDetails.description, MAX_DESCRIPTION_TEXT)}
 Plataforma Objetivo: ${projectDetails.platform || "Upwork"}
 
 Instrucciones para generar el JSON:
@@ -217,7 +225,7 @@ Basándote en la experiencia del freelancer y su CV base, crea una optimización
 INFORMACIÓN DEL FREELANCER:
 Nombre: ${profile.name}
 CV Base / Experiencia:
-${profile.freelanceOverview || profile.cvText}
+${truncate(profile.freelanceOverview || profile.cvText, MAX_PROFILE_TEXT)}
 
 REQUERIMIENTOS:
 Plataforma Objetivo: ${platform}
@@ -249,7 +257,7 @@ DETALLES DEL PROYECTO:
 Título: ${projectDetails.title}
 Cliente/Empresa: ${projectDetails.company}
 Propuesta enviada originalmente:
-${projectDetails.customPitch}
+${truncate(projectDetails.customPitch, MAX_DESCRIPTION_TEXT)}
 
 TIEMPO DE ESPERA: ${days} días desde la postulación.
 
