@@ -27,6 +27,8 @@
         "*://*.indeed.com/*",
         "*://*.infojobs.net/*",
         "*://*.getonbrd.com/*",
+        "*://*.getonbrd.cl/*",
+        "*://*.getonbrd.mx/*",
         "*://*.computrabajo.com/*",
         "*://*.computrabajo.com.pe/*",
         "*://*.bumeran.com/*",

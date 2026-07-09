@@ -485,20 +485,29 @@
 
     <!-- Autopilot Section -->
     <div class="mode-section" style="border-bottom: 1px solid var(--border); padding-bottom: 16px;">
-      <div class="mode-label">🤖 Búsqueda Auto (Autopiloto)</div>
+      <div class="mode-label">Auto-busqueda Inteligente</div>
+      <p style="font-size:10px; color:var(--muted); margin:2px 0 6px 0;">Busca, filtra y guarda ofertas compatibles con tu perfil</p>
       
       <!-- Config State -->
-      <div id="autopilot-config" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
-        <input type="text" id="autopilot-keywords" placeholder="Ej: React Developer, Node.js" style="font-size: 12px; padding: 8px 12px;" />
+      <div id="autopilot-config" style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
+        <input type="text" id="autopilot-keywords" placeholder="Ej: React, Node.js, Diseño UX..." style="font-size: 12px; padding: 8px 12px;" />
         <div style="display: flex; gap: 6px;">
           <select id="autopilot-platform" style="flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 9px; color: var(--text); font-size: 12px; padding: 8px 10px; outline: none; font-family: inherit;">
-            <option value="freelancer">Freelancer</option>
+            <option value="upwork">Upwork (Freelance)</option>
+            <option value="freelancer">Freelancer.com</option>
             <option value="workana">Workana</option>
-            <option value="upwork">Upwork</option>
-            <option value="linkedin">LinkedIn</option>
+            <option value="fiverr">Fiverr</option>
+            <option value="linkedin">LinkedIn (Empleo)</option>
+            <option value="indeed">Indeed</option>
             <option value="computrabajo">Computrabajo</option>
+            <option value="getonbrd">GetOnBoard</option>
           </select>
-          <button class="btn-primary" id="btn-start-autopilot" style="flex: 1.2; padding: 8px; font-size: 12px; box-shadow: none;">Iniciar Autopiloto</button>
+          <button class="btn-primary" id="btn-start-autopilot" style="flex: 1.2; padding: 8px; font-size: 12px; box-shadow: none;">Iniciar</button>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; font-size:10px; color:var(--muted);">
+          <span>Filtro minimo:</span>
+          <input type="range" id="autopilot-threshold" min="0" max="50" value="20" style="flex:1; accent-color:#6366f1;" />
+          <span id="lbl-threshold">20%</span>
         </div>
       </div>
 

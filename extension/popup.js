@@ -131,6 +131,12 @@ function bindButtons() {
   document.getElementById('btn-save-url').addEventListener('click', saveApiUrl);
   document.getElementById('btn-start-autopilot').addEventListener('click', startAutopilot);
   document.getElementById('btn-stop-autopilot').addEventListener('click', stopAutopilot);
+  const thresholdSlider = document.getElementById('autopilot-threshold');
+  if (thresholdSlider) {
+    thresholdSlider.addEventListener('input', () => {
+      document.getElementById('lbl-threshold').textContent = thresholdSlider.value + '%';
+    });
+  }
 }
 
 // ─── Auth flows ───────────────────────────────────────────────────────────────
@@ -342,14 +348,16 @@ function checkAutopilotState() {
       document.getElementById('lbl-auto-status').textContent = ap.status || 'Ejecutando...';
 
       const total = ap.total || 0;
-      const current = ap.currentIdx >= 0 ? ap.currentIdx + 1 : 0;
-      document.getElementById('lbl-auto-progress').textContent = `${current}/${total}`;
+      const current = ap.savedCount !== undefined
+        ? `${ap.savedCount || 0} guardadas`
+        : (ap.currentIdx >= 0 ? ap.currentIdx + 1 : 0) + '/' + total;
+      document.getElementById('lbl-auto-progress').textContent = `Guardadas: ${ap.savedCount || 0} | Omitidas: ${ap.skippedCount || 0} | Total: ${total || '?'}`;
 
-      const pct = total > 0 ? Math.round((current / total) * 100) : 0;
-      document.getElementById('pb-auto-progress').style.width = `${pct}%`;
+      const pct = total > 0 ? Math.round(((ap.savedCount || 0) / total) * 100) : 0;
+      document.getElementById('pb-auto-progress').style.width = `${Math.min(pct, 100)}%`;
 
       if (!autopilotInterval) {
-        autopilotInterval = setInterval(checkAutopilotState, 1000);
+        autopilotInterval = setInterval(checkAutopilotState, 1500);
       }
     } else {
       configDiv.style.display = 'flex';
@@ -365,44 +373,59 @@ function checkAutopilotState() {
 function startAutopilot() {
   const keywords = document.getElementById('autopilot-keywords').value.trim();
   const platform = document.getElementById('autopilot-platform').value;
+  const threshold = parseInt(document.getElementById('autopilot-threshold')?.value || '20', 10);
 
   if (!keywords) {
-    showMainToast('Describe los servicios que ofreces.', 'error');
+    showMainToast('Describe que buscas (ej: React, Node.js, Diseño)', 'error');
     return;
   }
 
-  let searchUrl = '';
-  if (platform === 'upwork') {
-    searchUrl = `https://www.upwork.com/nx/search/jobs/?q=${encodeURIComponent(keywords)}`;
-  } else if (platform === 'freelancer') {
-    searchUrl = `https://www.freelancer.com/jobs/?q=${encodeURIComponent(keywords)}`;
-  } else if (platform === 'workana') {
-    searchUrl = `https://www.workana.com/jobs?query=${encodeURIComponent(keywords)}`;
-  } else if (platform === 'linkedin') {
-    searchUrl = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(keywords)}`;
-  } else if (platform === 'computrabajo') {
-    searchUrl = `https://www.computrabajo.com/trabajo-de-${encodeURIComponent(keywords)}`;
-  }
+  chrome.storage.local.get(['mode'], (s) => {
+    const mode = s.mode || 'job';
 
-  const ap = {
-    active: true,
-    keywords,
-    platform,
-    searchUrl,
-    urls: [],
-    currentIdx: -1,
-    status: 'Iniciando búsqueda...',
-    total: 0,
-    timestamp: Date.now()
-  };
+    const searchUrls = {
+      upwork: `https://www.upwork.com/nx/search/jobs/?q=${encodeURIComponent(keywords)}`,
+      freelancer: `https://www.freelancer.com/jobs/?q=${encodeURIComponent(keywords)}`,
+      workana: `https://www.workana.com/jobs?query=${encodeURIComponent(keywords)}`,
+      fiverr: `https://www.fiverr.com/search/gigs?query=${encodeURIComponent(keywords)}`,
+      linkedin: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(keywords)}`,
+      indeed: `https://www.indeed.com/jobs?q=${encodeURIComponent(keywords)}`,
+      computrabajo: `https://www.computrabajo.com/trabajo-de-${encodeURIComponent(keywords)}`,
+      getonbrd: `https://www.getonbrd.com/trabajos?search=${encodeURIComponent(keywords)}`,
+      bumeran: `https://www.bumeran.com.pe/empleos-busqueda-${encodeURIComponent(keywords)}.html`
+    };
 
-  chrome.storage.local.set({
-    autopilot: ap,
-    autopilotKeywords: keywords,
-    autopilotPlatform: platform
-  }, () => {
-    checkAutopilotState();
-    chrome.tabs.create({ url: searchUrl });
+    const searchUrl = searchUrls[platform];
+    if (!searchUrl) {
+      showMainToast('Plataforma no soportada.', 'error');
+      return;
+    }
+
+    const ap = {
+      active: true,
+      keywords,
+      platform,
+      mode,
+      minScore: threshold,
+      searchUrl,
+      urls: [],
+      currentIdx: -1,
+      status: 'Escaneando pagina de resultados...',
+      total: 0,
+      savedCount: 0,
+      skippedCount: 0,
+      timestamp: Date.now()
+    };
+
+    chrome.storage.local.set({
+      autopilot: ap,
+      autopilotKeywords: keywords,
+      autopilotPlatform: platform
+    }, () => {
+      checkAutopilotState();
+      showMainToast(`Buscando "${keywords}" en modo ${mode}...`);
+      chrome.tabs.create({ url: searchUrl });
+    });
   });
 }
 

@@ -489,7 +489,354 @@ function showToast(message, type = 'success') {
   }, 3000);
 }
 
-// ─── Autopilot Helper Functions ─────────────────────────────────────────────
+// ─── Autopilot: Scrape Search Results ─────────────────────────────────────────
+function scrapeSearchResults(platform) {
+  const host = window.location.hostname;
+  const origin = window.location.origin;
+  const listings = [];
+
+  function cleanText(el) {
+    return el ? el.innerText.replace(/\s+/g, ' ').trim() : '';
+  }
+
+  // ── LinkedIn ──
+  if (host.includes('linkedin.com')) {
+    document.querySelectorAll('.job-card-container, .jobs-search-results__list-item, [data-job-id]').forEach(card => {
+      const title = cleanText(card.querySelector('.job-card-list__title, .job-card-container__link, .job-card-list__entity-lockup a, a[href*="/jobs/view/"]'));
+      const company = cleanText(card.querySelector('.job-card-container__company-name, .job-card-container__primary-description, .artdeco-entity-lockup__subtitle'));
+      const snippet = cleanText(card.querySelector('.job-card-container__metadata-wrapper, .job-card-list__metadata-wrapper'));
+      const link = card.querySelector('a[href*="/jobs/view/"], a[data-control-name="jobdetails"]')?.getAttribute('href') || '';
+      const url = link.startsWith('/') ? origin + link : link;
+      if (title) listings.push({ title, company, snippet, budget: '', url });
+    });
+  }
+
+  // ── Indeed ──
+  else if (host.includes('indeed.com')) {
+    document.querySelectorAll('.job_seen_beacon, .resultContent, [data-testid="jobListing"]').forEach(card => {
+      const title = cleanText(card.querySelector('h2 a, .jobTitle, [data-testid="jobTitle"]'));
+      const company = cleanText(card.querySelector('[data-testid="company-name"], .companyName, .company_location'));
+      const snippet = cleanText(card.querySelector('.job-snippet, .job-snippet-container, .jobMetaDataGroup'));
+      const url = card.querySelector('h2 a, [data-testid="jobTitle"] a, a[href*="/viewjob/"]')?.getAttribute('href') || '';
+      const fullUrl = url.startsWith('http') ? url : (url.startsWith('/') ? origin + url : '');
+      if (title) listings.push({ title, company, snippet, budget: '', url: fullUrl });
+    });
+  }
+
+  // ── InfoJobs ──
+  else if (host.includes('infojobs.net')) {
+    document.querySelectorAll('[data-qa="offer-item"], .ij-OfferCard, .card-offer').forEach(card => {
+      const title = cleanText(card.querySelector('[data-qa="offer-title"], .ij-OfferCard-title, h2 a'));
+      const company = cleanText(card.querySelector('[data-qa="offer-company"], .ij-OfferCard-company, .company-name'));
+      const snippet = cleanText(card.querySelector('[data-qa="offer-description"], .ij-OfferCard-description'));
+      const url = card.querySelector('a[href*="/oferta-de-trabajo/"], h2 a, [data-qa="offer-link"]')?.getAttribute('href') || '';
+      const fullUrl = url.startsWith('http') ? url : (url.startsWith('/') ? origin + url : '');
+      if (title) listings.push({ title, company, snippet, budget: '', url: fullUrl });
+    });
+  }
+
+  // ── Computrabajo ──
+  else if (host.includes('computrabajo.com')) {
+    document.querySelectorAll('.box_border, .iO, article, .box_offer, [class*="card"]').forEach(card => {
+      const title = cleanText(card.querySelector('h1 a, h2 a, .title_offer a, [class*="title"] a'));
+      const company = cleanText(card.querySelector('.link_emp, .info_company, .company, [class*="company"]'));
+      const snippet = cleanText(card.querySelector('.dO, p.descripcion, [class*="desc"]'));
+      const url = card.querySelector('a[href*="/trabajo-"], a[href*="/oferta-de-trabajo/"]')?.getAttribute('href') || '';
+      const fullUrl = url.startsWith('http') ? url : (url.startsWith('/') ? origin + url : '');
+      if (title) listings.push({ title, company, snippet, budget: '', url: fullUrl });
+    });
+  }
+
+  // ── Upwork (freelance) ──
+  else if (host.includes('upwork.com')) {
+    document.querySelectorAll('.job-tile, [data-test="JobTile"], .up-card-section, section[data-test="JobsList"] > div > div').forEach(card => {
+      const title = cleanText(card.querySelector('.job-tile-title a, h2 a, h3 a, [data-test="jobTitle"]'));
+      const company = cleanText(card.querySelector('.client-rating-label, [data-test="clientCountry"], .text-muted'));
+      const snippet = cleanText(card.querySelector('.job-description-text, [data-test="jobDescription"], .job-description p'));
+      const budget = cleanText(card.querySelector('.is-featured, strong[data-test="jobBudget"], .job-tile-rate, [data-test="price"]'));
+      const url = card.querySelector('.job-tile-title a, h2 a, h3 a, [data-test="jobTitle"] a')?.getAttribute('href') || '';
+      const fullUrl = url.startsWith('http') ? url : (url.startsWith('/') ? 'https://www.upwork.com' + url : '');
+      if (title) listings.push({ title, company, snippet, budget, url: fullUrl });
+    });
+  }
+
+  // ── Freelancer ──
+  else if (host.includes('freelancer.com')) {
+    document.querySelectorAll('.JobSearchCard-item, .project-card, [class*="ProjectSearchCard"]').forEach(card => {
+      const title = cleanText(card.querySelector('.JobSearchCard-primary-heading-link, .project-title a, a[href*="/projects/"]'));
+      const company = cleanText(card.querySelector('.JobSearchCard-secondary-heading, .project-client, .user-name'));
+      const snippet = cleanText(card.querySelector('.JobSearchCard-primary-description, .project-description, .desc'));
+      const budget = cleanText(card.querySelector('.JobSearchCard-primary-heading-price, .project-budget, [class*="budget"]'));
+      const url = card.querySelector('.JobSearchCard-primary-heading-link, a[href*="/projects/"]')?.getAttribute('href') || '';
+      const fullUrl = url.startsWith('http') ? url : (url.startsWith('/') ? 'https://www.freelancer.com' + url : '');
+      if (title) listings.push({ title, company, snippet, budget, url: fullUrl });
+    });
+  }
+
+  // ── Workana ──
+  else if (host.includes('workana.com')) {
+    document.querySelectorAll('.project-item, .project-card, article[class*="project"], .card-project').forEach(card => {
+      const title = cleanText(card.querySelector('h2 a, .project-title a, h3 a, a[href*="/job/"]'));
+      const company = cleanText(card.querySelector('.client-name, .project-client, .user-name'));
+      const snippet = cleanText(card.querySelector('.project-description, .project-desc, [class*="desc"]'));
+      const budget = cleanText(card.querySelector('.project-budget, .budget, [class*="budget"]'));
+      const url = card.querySelector('h2 a, h3 a, a[href*="/job/"]')?.getAttribute('href') || '';
+      const fullUrl = url.startsWith('http') ? url : (url.startsWith('/') ? 'https://www.workana.com' + url : '');
+      if (title) listings.push({ title, company, snippet, budget, url: fullUrl });
+    });
+  }
+
+  // ── Guru ──
+  else if (host.includes('guru.com')) {
+    document.querySelectorAll('.jobRecord, .job-record, [class*="jobItem"], [class*="jobList"] > div').forEach(card => {
+      const title = cleanText(card.querySelector('h2 a, h3 a, .title a, a[href*="/d/jobs/"]'));
+      const company = cleanText(card.querySelector('.employer, .client, [class*="employer"]'));
+      const snippet = cleanText(card.querySelector('.description, .desc, [class*="desc"]'));
+      const budget = cleanText(card.querySelector('.budget, .price, [class*="budget"]'));
+      const url = card.querySelector('a[href*="/d/jobs/"], a[href*="/jobs/"]')?.getAttribute('href') || '';
+      const fullUrl = url.startsWith('http') ? url : (url.startsWith('/') ? 'https://www.guru.com' + url : '');
+      if (title) listings.push({ title, company, snippet, budget, url: fullUrl });
+    });
+  }
+
+  // ── Fiverr (buyer requests / briefs) ──
+  else if (host.includes('fiverr.com')) {
+    document.querySelectorAll('.gig-card, .gig-wrapper, .seller-card, [class*="gig"]').forEach(card => {
+      const title = cleanText(card.querySelector('h3 a, .gig-title, .seller-title a, a[href*="/gig/"]'));
+      const company = cleanText(card.querySelector('.seller-name, .username, .seller-info'));
+      const snippet = cleanText(card.querySelector('.gig-description, [class*="desc"]'));
+      const budget = cleanText(card.querySelector('.price, .gig-price, [class*="price"]'));
+      const url = card.querySelector('a[href*="/gig/"]')?.getAttribute('href') || '';
+      const fullUrl = url.startsWith('http') ? url : (url.startsWith('/') ? 'https://www.fiverr.com' + url : '');
+      if (title) listings.push({ title, company, snippet, budget, url: fullUrl });
+    });
+  }
+
+  // ── Bumeran ──
+  else if (host.includes('bumeran.com')) {
+    document.querySelectorAll('[class*="aviso"], [class*="card"], .result-item, article').forEach(card => {
+      const title = cleanText(card.querySelector('h2 a, h3 a, [class*="title"] a'));
+      const company = cleanText(card.querySelector('[class*="company"], [class*="empresa"], h3'));
+      const snippet = cleanText(card.querySelector('[class*="desc"], p'));
+      const url = card.querySelector('a[href*="/aviso/"], a[href*="/empleo/"]')?.getAttribute('href') || '';
+      const fullUrl = url.startsWith('http') ? url : (url.startsWith('/') ? origin + url : '');
+      if (title) listings.push({ title, company, snippet, budget: '', url: fullUrl });
+    });
+  }
+
+  // Deduplicate by URL
+  const seen = new Set();
+  const unique = [];
+  for (const l of listings) {
+    const key = l.url || l.title;
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(l);
+    }
+  }
+
+  return unique;
+}
+
+// ─── Autopilot: Simple profile matching ────────────────────────────────────────
+function matchListingToProfile(listing, profileKeywords) {
+  const text = (listing.title + ' ' + listing.snippet + ' ' + listing.description).toLowerCase();
+  let score = 0;
+  let matched = [];
+
+  for (const kw of profileKeywords) {
+    if (text.includes(kw.toLowerCase())) {
+      score += 10;
+      matched.push(kw);
+    }
+  }
+
+  // Bonus for budget presence (freelance)
+  if (listing.budget && listing.budget.length > 0) score += 5;
+
+  return { score, matched, total: Math.min(score, 100) };
+}
+
+// ─── Autopilot: Main Runner ────────────────────────────────────────────────────
+function runAutopilotStep(ap, token, apiUrl, mode) {
+  const styleSheet = document.createElement("style");
+  styleSheet.innerText = `
+    @keyframes hud-pulse { 0% { transform: scale(0.9); opacity: 0.6; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(0.9); opacity: 0.6; } }
+    #jobauto-autopilot-hud a { color: #a5b4fc; text-decoration: none; }
+  `;
+  document.head.appendChild(styleSheet);
+
+  const hud = document.createElement('div');
+  hud.id = 'jobauto-autopilot-hud';
+  hud.style.cssText = `
+    position: fixed; top: 20px; right: 20px; z-index: 1000000;
+    background: rgba(10, 15, 30, 0.96); color: #f1f5f9;
+    border: 1px solid rgba(99, 102, 241, 0.5); border-radius: 14px;
+    padding: 18px; width: 300px; max-height: 80vh; overflow-y: auto;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 13px; line-height: 1.5;
+  `;
+  hud.innerHTML = `
+    <div style="font-weight:700; display:flex; align-items:center; gap:8px; color:#a5b4fc; margin-bottom:10px; font-size:14px;">
+      <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#a5b4fc; animation: hud-pulse 1.5s infinite;"></span>
+      Autopiloto JobAuto
+    </div>
+    <div style="font-size:12px; color:#94a3b8; margin-bottom:6px;" id="hud-status">Iniciando escaneo...</div>
+    <div style="font-size:11px; color:#64748b; margin-bottom:6px;" id="hud-progress">Progreso: -</div>
+    <div id="hud-results" style="display:none; margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px; max-height:300px; overflow-y:auto;"></div>
+  `;
+  document.body.appendChild(hud);
+
+  let savedCount = 0;
+  let skippedCount = 0;
+
+  const updateStatus = (statusText, updates = {}) => {
+    const el = document.getElementById('hud-status');
+    if (el) el.textContent = statusText;
+    chrome.storage.local.set({ autopilot: { ...ap, status: statusText, ...updates } });
+  };
+
+  async function run() {
+    updateStatus('Buscando ofertas en la pagina...');
+
+    await new Promise(r => setTimeout(r, 2500));
+
+    const listings = scrapeSearchResults(ap.platform);
+
+    if (listings.length === 0) {
+      updateStatus('No se encontraron ofertas. Deteniendo.', { active: false });
+      setTimeout(() => hud.remove(), 5000);
+      return;
+    }
+
+    updateStatus(`${listings.length} ofertas encontradas.`, { total: listings.length });
+
+    // Fetch profile keywords from server
+    let profileKeywords = [];
+    try {
+      const profileEndpoint = mode === 'job'
+        ? `${apiUrl}/api/profile/job`
+        : `${apiUrl}/api/profile/freelance`;
+      const res = await fetch(profileEndpoint, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const profile = await res.json();
+        const profileText = (profile.cvText || profile.freelanceOverview || profile.experienceSummary || '').toLowerCase();
+        const words = profileText.split(/[\s,.;:()\[\]{}<>\/\\|@#$%^&*+=!?`~"'_-]+/);
+        const stopWords = new Set(['de', 'la', 'el', 'los', 'las', 'un', 'una', 'con', 'del', 'para', 'por', 'que', 'en', 'y', 'a', 'o', 'es', 'se', 'su', 'al', 'lo', 'como', 'mas', 'muy', 'the', 'and', 'for', 'with', 'from', 'this', 'that', 'have', 'has', 'are', 'was', 'not', 'but', 'you', 'all', 'can', 'had', 'her', 'his', 'been', 'will', 'would', 'about', 'each', 'which', 'their', 'when', 'what']);
+        profileKeywords = [...new Set(words.filter(w => w.length > 3 && !stopWords.has(w)).slice(0, 20))];
+      }
+    } catch (e) {
+      console.warn('Could not fetch profile, using basic matching:', e);
+    }
+
+    // Get keywords from autopilot settings too
+    if (ap.keywords) {
+      const extraKeywords = ap.keywords.toLowerCase().split(/[\s,]+/).filter(w => w.length > 2);
+      profileKeywords = [...new Set([...profileKeywords, ...extraKeywords])].slice(0, 25);
+    }
+
+    updateStatus(`Evaluando ${listings.length} ofertas con tu perfil...`);
+
+    const resultsEl = document.getElementById('hud-results');
+    resultsEl.style.display = 'block';
+
+    const threshold = ap.minScore || 20;
+    let i = 0;
+
+    for (const listing of listings) {
+      i++;
+      const progressEl = document.getElementById('hud-progress');
+      if (progressEl) progressEl.textContent = `Procesando: ${i} de ${listings.length} | Guardados: ${savedCount}`;
+
+      const match = matchListingToProfile(listing, profileKeywords);
+
+      if (match.total >= threshold) {
+        // Save to dashboard
+        try {
+          const endpoint = mode === 'job'
+            ? `${apiUrl}/api/applications`
+            : `${apiUrl}/api/freelance/proposals`;
+
+          const payload = {
+            title: listing.title,
+            company: listing.company || 'Desconocido',
+            url: listing.url || window.location.href,
+            description: listing.snippet || listing.description || '',
+            budget: listing.budget || '',
+            status: 'Saved',
+            platform: ap.platform.charAt(0).toUpperCase() + ap.platform.slice(1)
+          };
+
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+          });
+
+          if (res.ok) {
+            savedCount++;
+            const itemEl = document.createElement('div');
+            itemEl.style.cssText = 'padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:11px; margin-bottom:2px;';
+            const url = listing.url || '#';
+            itemEl.innerHTML = `
+              <div style="color:#10b981; font-weight:600; margin-bottom:2px;">+ ${listing.title.substring(0, 50)}</div>
+              <div style="color:#64748b;">${listing.company} - Score: ${match.total}%</div>
+              ${url !== '#' ? `<a href="${url}" target="_blank" style="color:#6366f1; font-size:10px;">Ver oferta →</a>` : ''}
+            `;
+            resultsEl.appendChild(itemEl);
+          } else {
+            skippedCount++;
+          }
+        } catch (e) {
+          skippedCount++;
+        }
+      } else {
+        skippedCount++;
+      }
+
+      // Small delay between saves to avoid rate limiting
+      if (i < listings.length) {
+        await new Promise(r => setTimeout(r, 400));
+      }
+    }
+
+    // Build summary URL
+    let summaryUrl = apiUrl;
+    try {
+      const searchUrl = encodeURIComponent(ap.searchUrl || window.location.href);
+      summaryUrl = `${apiUrl}?autopilot=done&saved=${savedCount}&skipped=${skippedCount}&platform=${ap.platform}`;
+    } catch (e) {}
+
+    updateStatus(`Completado: ${savedCount} guardadas, ${skippedCount} omitidas.`, { active: false, savedCount, skippedCount });
+
+    const footerEl = document.createElement('div');
+    footerEl.style.cssText = 'margin-top:10px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1); text-align:center;';
+    footerEl.innerHTML = `
+      <a href="${summaryUrl}" style="display:inline-block; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:#fff; padding:8px 16px; border-radius:8px; text-decoration:none; font-weight:600; font-size:12px;">Ir al Dashboard</a>
+    `;
+    resultsEl.appendChild(footerEl);
+
+    // Auto-remove HUD after 30 seconds (user can read results)
+    setTimeout(() => {
+      if (hud.parentNode) hud.remove();
+    }, 30000);
+
+    chrome.storage.local.set({ autopilot: { ...ap, active: false, savedCount, skippedCount } });
+  }
+
+  run().catch((err) => {
+    updateStatus(`Error: ${err.message}`, { active: false });
+    setTimeout(() => hud.remove(), 8000);
+  });
+}
+
+// Keep old findJobLinks for backwards compat
 function findJobLinks(platform) {
   const links = Array.from(document.querySelectorAll('a'));
   const urls = [];
@@ -498,172 +845,15 @@ function findJobLinks(platform) {
   links.forEach(a => {
     let href = a.getAttribute('href');
     if (!href) return;
-    
-    // Convert relative to absolute
-    if (href.startsWith('/')) {
-      href = origin + href;
-    } else if (!href.startsWith('http')) {
-      return;
-    }
+    if (href.startsWith('/')) href = origin + href;
+    else if (!href.startsWith('http')) return;
 
-    if (platform === 'freelancer' && href.includes('/projects/')) {
-      if (!href.includes('?') && !href.includes('/dashboard') && !href.includes('/project/')) {
-        urls.push(href);
-      }
-    }
-    else if (platform === 'workana' && (href.includes('/job/') || href.includes('/proyecto/'))) {
-      if (!href.includes('?') && !href.includes('/projects')) {
-        urls.push(href);
-      }
-    }
-    else if (platform === 'upwork' && (href.includes('/jobs/~') || href.includes('/nx/jobs/search/details/') || href.includes('/jobs/view/'))) {
-      urls.push(href);
-    }
-    else if (platform === 'linkedin' && (href.includes('/view/') || href.includes('/jobs/view/'))) {
-      urls.push(href);
-    }
-    else if (platform === 'computrabajo' && (href.includes('/oferta-de-trabajo/') || href.includes('/trabajo/'))) {
-      urls.push(href);
-    }
+    if (platform === 'freelancer' && href.includes('/projects/') && !href.includes('?') && !href.includes('/dashboard')) urls.push(href);
+    else if (platform === 'workana' && (href.includes('/job/') || href.includes('/proyecto/')) && !href.includes('?')) urls.push(href);
+    else if (platform === 'upwork' && href.includes('/jobs/') && !href.includes('/search/')) urls.push(href);
+    else if (platform === 'linkedin' && (href.includes('/view/') || href.includes('/jobs/view/'))) urls.push(href);
+    else if (platform === 'computrabajo' && (href.includes('/oferta-de-trabajo/') || href.includes('/trabajo/'))) urls.push(href);
   });
 
-  // Return unique links, capped at 6 to avoid rate limits
-  return [...new Set(urls)].slice(0, 6);
-}
-
-function runAutopilotStep(ap, token, apiUrl, mode) {
-  // Inject keyframe animation for HUD pulsing dot
-  const styleSheet = document.createElement("style");
-  styleSheet.innerText = `
-    @keyframes hud-pulse { 0% { transform: scale(0.9); opacity: 0.6; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(0.9); opacity: 0.6; } }
-  `;
-  document.head.appendChild(styleSheet);
-
-  // Create HUD overlay
-  const hud = document.createElement('div');
-  hud.id = 'jobauto-autopilot-hud';
-  hud.style.cssText = `
-    position: fixed; top: 20px; right: 20px; z-index: 1000000;
-    background: rgba(10, 15, 30, 0.95); color: #f1f5f9;
-    border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 12px;
-    padding: 16px; width: 260px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-size: 13px; line-height: 1.5; pointer-events: none;
-  `;
-  hud.innerHTML = `
-    <div style="font-weight:700; display:flex; align-items:center; gap:6px; color:#a5b4fc; margin-bottom:8px;">
-      <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#a5b4fc; animation: hud-pulse 1.5s infinite;"></span>
-      🤖 Autopiloto JobAuto
-    </div>
-    <div style="font-size:11.5px; color:#94a3b8;" id="hud-status">Iniciando...</div>
-    <div style="font-size:11.5px; color:#94a3b8; margin-top:4px;" id="hud-progress">Progreso: 0/0</div>
-  `;
-  document.body.appendChild(hud);
-
-  // Helper to update status in HUD & storage
-  const updateStatus = (statusText, updates = {}) => {
-    const el = document.getElementById('hud-status');
-    if (el) el.textContent = statusText;
-    const progressEl = document.getElementById('hud-progress');
-    if (progressEl) {
-      const current = ap.currentIdx >= 0 ? ap.currentIdx + 1 : 0;
-      progressEl.textContent = `Progreso: ${current} de ${ap.total}`;
-    }
-    chrome.storage.local.set({ autopilot: { ...ap, status: statusText, ...updates } });
-  };
-
-  // 1. Check if we are on the Search Page (URLs is empty or currentIdx is -1)
-  if (ap.currentIdx === -1) {
-    updateStatus('Escaneando ofertas en la página...');
-    
-    // Wait for page to render jobs list
-    setTimeout(() => {
-      const jobUrls = findJobLinks(ap.platform);
-      
-      if (jobUrls.length === 0) {
-        updateStatus('No se encontraron ofertas. Deteniendo.', { active: false });
-        setTimeout(() => hud.remove(), 4000);
-        return;
-      }
-
-      ap.urls = jobUrls;
-      ap.total = jobUrls.length;
-      ap.currentIdx = 0;
-      
-      updateStatus('Ofertas encontradas. Redireccionando...', {
-        urls: jobUrls,
-        total: jobUrls.length,
-        currentIdx: 0
-      });
-
-      // Redirect to first job page
-      setTimeout(() => {
-        window.location.href = jobUrls[0];
-      }, 1500);
-
-    }, 3000);
-  } else {
-    // 2. We are on a job details page
-    updateStatus(`Analizando oferta actual...`);
-
-    setTimeout(async () => {
-      try {
-        const jobData = scrapeJobData();
-        if (!jobData.title) {
-          throw new Error('No se pudo extraer el título de la oferta.');
-        }
-
-        // Send to backend
-        updateStatus(`Guardando oferta en tablero...`);
-        const endpoint = mode === 'job' 
-          ? `${apiUrl}/api/applications`
-          : `${apiUrl}/api/freelance/proposals`;
-
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            title: jobData.title,
-            company: jobData.company || 'Cliente / Desconocido',
-            url: jobData.url || window.location.href,
-            description: jobData.description || 'Sin descripción',
-            budget: jobData.budget || '',
-            status: 'Saved',
-            platform: ap.platform.charAt(0).toUpperCase() + ap.platform.slice(1)
-          })
-        });
-
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.error || 'Error del servidor');
-        }
-
-        updateStatus(`✅ Oferta guardada exitosamente.`);
-      } catch (err) {
-        updateStatus(`⚠️ Omitida: ${err.message}`);
-      }
-
-      // Wait and proceed to next URL
-      setTimeout(() => {
-        const nextIdx = ap.currentIdx + 1;
-        if (nextIdx < ap.urls.length) {
-          updateStatus('Cargando siguiente oferta...', { currentIdx: nextIdx });
-          setTimeout(() => {
-            window.location.href = ap.urls[nextIdx];
-          }, 1500);
-        } else {
-          updateStatus('🎉 ¡Autopiloto completado!', { active: false });
-          setTimeout(() => {
-            hud.remove();
-            // Redirect to dashboard
-            window.location.href = apiUrl;
-          }, 2500);
-        }
-      }, 2500);
-
-    }, 3500);
-  }
+  return [...new Set(urls)].slice(0, 10);
 }
